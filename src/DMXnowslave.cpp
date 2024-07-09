@@ -7,7 +7,7 @@ void DMXnow::initSlave(){
     
     Serial.println("Initialisiere DMXnow...");
     esp_now_init();
-    esp_now_register_recv_cb(dataReceived);
+    esp_now_register_recv_cb(slaveDataReceived);
 
     esp_now_peer_info_t peerInfo;
     memset(&peerInfo, 0, sizeof(peerInfo));
@@ -96,9 +96,8 @@ void DMXnow::slaveDataReceived(const uint8_t* macAddr, const uint8_t* data, int 
         //valid universe...
     }else if(universe == SLAVE_CODE_REQUEST){
         slaveRequest(macAddr, data, len);
-        
     }else if(universe == SLAVE_CODE_SET){
-    
+        slaveReceiveSetter(macAddr, data, len);
     }else{
         Serial.println("unknown universe");
     }
@@ -126,17 +125,36 @@ void DMXnow::slaveRequest(const uint8_t* macAddr, const uint8_t* data, int len){
     }else(sendSlaveresponse(macAddr));   //known peer
 }
 
-void DMXnow::slaveReceiveSetter(const uint8_t *macAddr, const uint8_t *data, int len) {
-    // artnow_packet_t *packet = (artnow_packet_t *) data;
-    // // Daten extrahieren
-    // uint8_t *data = (char *) packet.data;
+void DMXnow::slaveReceiveSetter(const uint8_t* macAddr, const uint8_t* data, int len) {
+    if (len < sizeof(artnow_packet_t)) {
+        Serial.println("Received packet size mismatch");
+        return;
+    }
+
+    artnow_packet_t* packet = (artnow_packet_t*)data; // Daten in die Struktur artnow_packet_t kopieren
+
+    // Daten dekodieren
+    uint8_t universe = packet->universe;
+    uint8_t sequence = packet->sequence;
+    uint8_t part = packet->part;
+
+    // Extrahiere setter name und setter value aus packet->data
+    char _settername[SETTTER_NAME_LENGTH];
+    char _settervalue[SETTER_VALUE_LENGTH];
     
-    // // Variablen extrahieren
-    // String receivedData(data);
-    // int separatorIndex = receivedData.indexOf(',');
-    // String variable = receivedData.substring(0, separatorIndex);
-    // String value = receivedData.substring(separatorIndex + 1);
-    
-    // // Hier können Aktionen basierend auf der Variable und dem Wert durchgeführt werden
-    // Serial.printf("Set %s to %s\n", variable.c_str(), value.c_str());
+    memcpy(_settername, packet->data, SETTTER_NAME_LENGTH);
+    memcpy(_settervalue, packet->data + SETTTER_NAME_LENGTH, SETTER_VALUE_LENGTH);
+
+    // Nullterminierung hinzufügen, da memcpy keine Nullterminierung setzt
+    _settername[SETTTER_NAME_LENGTH - 1] = '\0';
+    _settervalue[SETTER_VALUE_LENGTH - 1] = '\0';
+
+    // Hier könnten weitere Verarbeitungsschritte erfolgen, z.B. Anwendung der erhaltenen Einstellungen
+
+    // Beispiel: Ausgabe der empfangenen Werte
+    Serial.printf("Received setter from %02x:%02x:%02x:%02x:%02x:%02x - Name: %s, Value: %s\n",
+                  macAddr[0], macAddr[1], macAddr[2], macAddr[3], macAddr[4], macAddr[5],
+                  _settername, _settervalue);
+
+    // Hier können je nach Bedarf weitere Aktionen hinzugefügt werden
 }
