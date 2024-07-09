@@ -74,7 +74,7 @@ public:
     
 // slave stuff
     static void initSlave();
-    static void registerMaster(const uint8_t* macAddr, int peerNo);
+    static void registerPeer(const uint8_t* macAddr, int peerNo);
     static void sendSlaveresponse(const uint8_t* macMaster);
     static void slaveDataReceived(const uint8_t* macAddr, const uint8_t* data, int len);
 private:

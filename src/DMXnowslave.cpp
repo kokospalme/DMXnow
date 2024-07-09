@@ -36,7 +36,7 @@ void DMXnow::initSlave(){
 /*
 register peer to list
 */
-void DMXnow::registerMaster(const uint8_t* macAddr, int peerNo){
+void DMXnow::registerPeer(const uint8_t* macAddr, int peerNo){
     memcpy(peerInfo.peer_addr, macAddr, 6);
     // Serial.printf("register peer: %02X.%02X.%02X.%02X.%02X.%02X... ",peerInfo.peer_addr[0],peerInfo.peer_addr[1],peerInfo.peer_addr[2],peerInfo.peer_addr[3],peerInfo.peer_addr[4],peerInfo.peer_addr[5]);
     peerInfo.channel = 0;
@@ -121,7 +121,7 @@ void DMXnow::slaveRequest(const uint8_t* macAddr, const uint8_t* data, int len){
     Serial.printf("slave request from %02X.%02X.%02X.%02X.%02X.%02X... ",macAddr[0],macAddr[1],macAddr[2],macAddr[3],macAddr[4],macAddr[5]);
     int _findPeer = findPeerByMac(macAddr);
     if(_findPeer == -1){
-        registerMaster(macAddr,freePeer);    //new peer
+        registerPeer(macAddr,freePeer);    //new peer
         sendSlaveresponse(macAddr);
     }else(sendSlaveresponse(macAddr));   //known peer
 }

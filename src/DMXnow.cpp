@@ -76,11 +76,10 @@ void DMXnow::sendSlaveRequest() {
 
 void DMXnow::sendSlaveSetter(const uint8_t *macAddr, String name, String value) {
     artnow_packet_t _packet;
-    packet = _packet;
 
-    packet.universe = SLAVE_CODE_SET;
-    packet.sequence = 0; // Hier sollte eine sinnvolle Sequenznummer gesetzt werden
-    packet.part = 0;     // Teilnummer des Pakets
+    _packet.universe = SLAVE_CODE_SET;
+    _packet.sequence = 0; // Hier sollte eine sinnvolle Sequenznummer gesetzt werden
+    _packet.part = 0;     // Teilnummer des Pakets
 
   
     if(name.length() > SETTTER_NAME_LENGTH){
@@ -91,33 +90,40 @@ void DMXnow::sendSlaveSetter(const uint8_t *macAddr, String name, String value) 
         Serial.println("value to long");
         return;
     }
-    char _settername[SETTTER_NAME_LENGTH +1]; // +1 für das Nullzeichen am Ende
-    char _settervalue[SETTER_VALUE_LENGTH +1]; // +1 für das Nullzeichen am Ende
-    
-    // Kopiere str in arrayChar
+
+    uint8_t _buffer[50];
+    char _settername[SETTTER_NAME_LENGTH]; // Kein +1 für das Nullzeichen am Ende
+    char _settervalue[SETTER_VALUE_LENGTH]; // Kein +1 für das Nullzeichen am Ende
+
+    // Kopiere str in _settername und _settervalue
     strcpy(_settername, name.c_str());
     strcpy(_settervalue, value.c_str());
 
+    // Kopiere _settername und _settervalue in das data[] Feld von packet
+
     uint16_t _counter = 0;
-    for(int i = 0; i < SETTTER_NAME_LENGTH +1; i++){
-        packet.data[_counter] = _settername[i];
-        _counter++;
-    }
-    for(int i = 0; i < SETTER_VALUE_LENGTH +1; i++){
-        packet.data[_counter] = _settervalue[i];
-        _counter++;
-    }
+    memcpy(_buffer, _settername, sizeof(_settername));
+    size_t offset = sizeof(_settername);// Bestimme die Position, an der das zweite Array beginnen soll
+    memcpy(_buffer + offset, _settervalue, sizeof(_settervalue));
 
+    // memcpy(packet.data + _counter, _settervalue, SETTER_VALUE_LENGTH);
+    // _counter += SETTER_VALUE_LENGTH;
+    memcpy(_packet.data, _buffer, sizeof(_buffer));
 
-    esp_err_t result = esp_now_send(macAddr, (uint8_t *) &packet, sizeof(artnow_packet_t));// Sende das Paket
+    esp_err_t result = esp_now_send(macAddr, (uint8_t *) &_packet, sizeof(artnow_packet_t));// Sende das Paket
     
-    // Überprüfe das Ergebnis des Sendevorgangs
     if (result == ESP_OK) {
-        Serial.println("Send success");
+        Serial.printf("Slave setter (%s:%s) sent.\n",name.c_str(), _settervalue );
     } else {
-        Serial.println("Send fail");
+        Serial.print("Error sending slave setter: ");
+        Serial.println(result);
     }
-    
+    Serial.printf("Slave setter (%s:%s) sent.\n",name.c_str(), value.c_str() );
+
+    // for(int i = 0; i < sizeof(_buffer); i++){
+    //     Serial.print(_buffer[i]);
+    // }
+
 }
 
 
