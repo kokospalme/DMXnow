@@ -99,9 +99,12 @@ void DMXnow::sendSlaveSetter(const uint8_t *macAddr, String name, String value) 
     }
 
     //buffer
+    String bufString = name;
+    bufString+= ":";
+    bufString+=value;
 
-    char charArray[name.length() + 1]; // +1 für das Nullterminierungszeichen
-    name.toCharArray(charArray, sizeof(charArray));
+    char charArray[bufString.length() + 1]; // +1 für das Nullterminierungszeichen
+    bufString.toCharArray(charArray, sizeof(charArray));
 
     memcpy(_packet.data, charArray, sizeof(_packet.data));    //char array to buffer
 
