@@ -84,6 +84,10 @@ void DMXnow::sendSlaveRequest() {
 }
 
 void DMXnow::sendSlaveSetter(const uint8_t *macAddr, String name, String value) {
+    artnow_packet_t _packet;
+    _packet.universe = SLAVE_CODE_SET;
+    _packet.sequence = 0;
+    _packet.part = 0;
 
     if(name.length() > SETTTER_NAME_LENGTH){
         Serial.println("settername to long");
@@ -95,14 +99,14 @@ void DMXnow::sendSlaveSetter(const uint8_t *macAddr, String name, String value) 
     }
 
     //buffer
-    // Konvertiere String in ein char-Array (C-String)
+
     char charArray[name.length() + 1]; // +1 für das Nullterminierungszeichen
     name.toCharArray(charArray, sizeof(charArray));
 
-    memcpy(packet.data, charArray, sizeof(packet.data));    //char array to buffer
+    memcpy(_packet.data, charArray, sizeof(_packet.data));    //char array to buffer
 
     //output
-    esp_err_t result = esp_now_send(macAddr, (uint8_t *)&packet,  sizeof(artnow_packet_t));
+    esp_err_t result = esp_now_send(macAddr, (uint8_t *)&_packet,  sizeof(_packet));
 
     if (result == ESP_OK) {
         Serial.println("sent setter to slave");
@@ -110,19 +114,6 @@ void DMXnow::sendSlaveSetter(const uint8_t *macAddr, String name, String value) 
         Serial.print("Error sending setter. ");
         Serial.println(result);
     }
-
-    // String receivedString(packet.data);
-    // String result;
-    // size_t length2 = strnlen((const char*)_buffer, SETTTER_NAME_LENGTH); // Länge des Null-terminierten Strings
-    // result.reserve(length2);
-    // for (size_t i = 0; i < length2; ++i) {
-    //     result += (char)_buffer[i];
-    // }
-
-    // Serial.printf("string: %s\n", result.c_str());
-
-
-
 }
 
 
