@@ -129,7 +129,7 @@ void DMXnow::slaveRequest(const uint8_t* macAddr, const uint8_t* data, int len){
 void DMXnow::slaveReceiveSetter(const uint8_t *macAddr, const uint8_t *data, int len) {
     artnow_packet_t *packet = (artnow_packet_t *) data;
     // Daten extrahieren
-    char *data = (char *) packet->data;
+    uint8_t *data = (char *) packet.data;
     
     // Variablen extrahieren
     String receivedData(data);

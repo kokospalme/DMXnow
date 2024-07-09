@@ -13,6 +13,8 @@ inspired from: https://github.com/Blinkinlabs/esp-now-dmx
 #include "esp_wifi.h"
 
 #define PEERS_MAX 10
+#define SETTTER_NAME_LENGTH 24  //bytes (+1 when sent)
+#define SETTER_VALUE_LENGTH 24  //bytes
 
 #define SLAVE_CODE_REQUEST 254  //get slaves' info
 #define SLAVE_CODE_SET 253
@@ -65,7 +67,7 @@ public:
     static void onDataSent(const uint8_t* macAddr, esp_now_send_status_t status);
 
     static void sendSlaveRequest(); //!new
-    static void sendSlaveSetter(const uint8_t *macAddr, String variable, String value); 
+    static void sendSlaveSetter(const uint8_t *macAddr, String name, String value); 
 
     static void dataReceived(const uint8_t *macAddr, const uint8_t *data, int len); //!new
     

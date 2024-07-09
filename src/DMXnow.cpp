@@ -74,25 +74,42 @@ void DMXnow::sendSlaveRequest() {
     }
 }
 
-void DMXnow::sendSlaveSetter(const uint8_t *macAddr, String variable, String value) {
+void DMXnow::sendSlaveSetter(const uint8_t *macAddr, String name, String value) {
     artnow_packet_t _packet;
     packet = _packet;
 
-    // Berechne die Größe des Datenpakets
-    size_t dataLength = variable.length() + 1 + value.length() + 1; // +1 für Null-Terminierung
-    size_t packetSize = sizeof(artnow_packet_t) + dataLength;
-    
-    // Erstelle das Datenpaket
-    artnow_packet_t *packet = (artnow_packet_t *) malloc(packetSize);
-    packet->universe = SLAVE_CODE_SET;
-    packet->sequence = 0; // Setze die Sequenznummer (kann auch inkrementiert werden)
-    packet->part = 0; // Setze den Teil, wenn mehrere Teile gesendet werden
-    
-    // Kopiere die variable und den Wert in das Datenarray
-    snprintf((char *) packet->data, dataLength, "%s,%s", variable.c_str(), value.c_str());
+    packet.universe = SLAVE_CODE_SET;
+    packet.sequence = 0; // Hier sollte eine sinnvolle Sequenznummer gesetzt werden
+    packet.part = 0;     // Teilnummer des Pakets
 
-    // Sende das Paket
-    esp_err_t result = esp_now_send(macAddr, (uint8_t *) packet, packetSize);
+  
+    if(name.length() > SETTTER_NAME_LENGTH){
+        Serial.println("settername to long");
+        return;
+    }
+    if(value.length() > SETTER_VALUE_LENGTH){
+        Serial.println("value to long");
+        return;
+    }
+    char _settername[SETTTER_NAME_LENGTH +1]; // +1 für das Nullzeichen am Ende
+    char _settervalue[SETTER_VALUE_LENGTH +1]; // +1 für das Nullzeichen am Ende
+    
+    // Kopiere str in arrayChar
+    strcpy(_settername, name.c_str());
+    strcpy(_settervalue, value.c_str());
+
+    uint16_t _counter = 0;
+    for(int i = 0; i < SETTTER_NAME_LENGTH +1; i++){
+        packet.data[_counter] = _settername[i];
+        _counter++;
+    }
+    for(int i = 0; i < SETTER_VALUE_LENGTH +1; i++){
+        packet.data[_counter] = _settervalue[i];
+        _counter++;
+    }
+
+
+    esp_err_t result = esp_now_send(macAddr, (uint8_t *) &packet, sizeof(artnow_packet_t));// Sende das Paket
     
     // Überprüfe das Ergebnis des Sendevorgangs
     if (result == ESP_OK) {
