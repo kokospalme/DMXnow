@@ -92,16 +92,17 @@ void DMXnow::sendSlaveSetter(const uint8_t *macAddr, String name, String value) 
     }
 
     uint8_t _buffer[50];
-    char _settername[SETTTER_NAME_LENGTH]; // Kein +1 für das Nullzeichen am Ende
-    char _settervalue[SETTER_VALUE_LENGTH]; // Kein +1 für das Nullzeichen am Ende
 
-    // Kopiere str in _settername und _settervalue
-    strcpy(_settername, name.c_str());
-    strcpy(_settervalue, value.c_str());
+    uint8_t _settername [SETTTER_NAME_LENGTH];
+    uint8_t _settervalue [SETTER_VALUE_LENGTH];
 
-    // Kopiere _settername und _settervalue in das data[] Feld von packet
+    const char* __settername = name.c_str();
+    const char* __settervalue = value.c_str();
 
-    uint16_t _counter = 0;
+    sprintf((char *)_settername, __settername);
+    sprintf((char *)_settervalue, __settervalue);
+
+
     memcpy(_buffer, _settername, sizeof(_settername));
     size_t offset = sizeof(_settername);// Bestimme die Position, an der das zweite Array beginnen soll
     memcpy(_buffer + offset, _settervalue, sizeof(_settervalue));
@@ -119,6 +120,14 @@ void DMXnow::sendSlaveSetter(const uint8_t *macAddr, String name, String value) 
         Serial.println(result);
     }
     Serial.printf("Slave setter (%s:%s) sent.\n",name.c_str(), value.c_str() );
+
+
+
+
+
+
+
+
 
     // for(int i = 0; i < sizeof(_buffer); i++){
     //     Serial.print(_buffer[i]);
