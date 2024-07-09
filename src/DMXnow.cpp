@@ -118,8 +118,6 @@ void DMXnow::sendSlaveSetter(const uint8_t *macAddr, String name, String value) 
         Serial.println("Send fail");
     }
     
-    // Speicher freigeben
-    free(packet);
 }
 
 

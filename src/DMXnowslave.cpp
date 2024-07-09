@@ -127,16 +127,16 @@ void DMXnow::slaveRequest(const uint8_t* macAddr, const uint8_t* data, int len){
 }
 
 void DMXnow::slaveReceiveSetter(const uint8_t *macAddr, const uint8_t *data, int len) {
-    artnow_packet_t *packet = (artnow_packet_t *) data;
-    // Daten extrahieren
-    uint8_t *data = (char *) packet.data;
+    // artnow_packet_t *packet = (artnow_packet_t *) data;
+    // // Daten extrahieren
+    // uint8_t *data = (char *) packet.data;
     
-    // Variablen extrahieren
-    String receivedData(data);
-    int separatorIndex = receivedData.indexOf(',');
-    String variable = receivedData.substring(0, separatorIndex);
-    String value = receivedData.substring(separatorIndex + 1);
+    // // Variablen extrahieren
+    // String receivedData(data);
+    // int separatorIndex = receivedData.indexOf(',');
+    // String variable = receivedData.substring(0, separatorIndex);
+    // String value = receivedData.substring(separatorIndex + 1);
     
-    // Hier können Aktionen basierend auf der Variable und dem Wert durchgeführt werden
-    Serial.printf("Set %s to %s\n", variable.c_str(), value.c_str());
+    // // Hier können Aktionen basierend auf der Variable und dem Wert durchgeführt werden
+    // Serial.printf("Set %s to %s\n", variable.c_str(), value.c_str());
 }
