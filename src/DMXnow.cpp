@@ -75,13 +75,7 @@ void DMXnow::sendSlaveRequest() {
 }
 
 void DMXnow::sendSlaveSetter(const uint8_t *macAddr, String name, String value) {
-    artnow_packet_t _packet;
 
-    _packet.universe = SLAVE_CODE_SET;
-    _packet.sequence = 0; // Hier sollte eine sinnvolle Sequenznummer gesetzt werden
-    _packet.part = 0;     // Teilnummer des Pakets
-
-  
     if(name.length() > SETTTER_NAME_LENGTH){
         Serial.println("settername to long");
         return;
@@ -91,47 +85,34 @@ void DMXnow::sendSlaveSetter(const uint8_t *macAddr, String name, String value) 
         return;
     }
 
-    uint8_t _buffer[50];
+    //buffer
+    // Konvertiere String in ein char-Array (C-String)
+    char charArray[name.length() + 1]; // +1 für das Nullterminierungszeichen
+    name.toCharArray(charArray, sizeof(charArray));
 
-    uint8_t _settername [SETTTER_NAME_LENGTH];
-    uint8_t _settervalue [SETTER_VALUE_LENGTH];
+    memcpy(packet.data, charArray, sizeof(packet.data));    //char array to buffer
 
-    const char* __settername = name.c_str();
-    const char* __settervalue = value.c_str();
+    //output
+    esp_err_t result = esp_now_send(macAddr, (uint8_t *)&packet,  sizeof(artnow_packet_t));
 
-    sprintf((char *)_settername, __settername);
-    sprintf((char *)_settervalue, __settervalue);
-
-
-    memcpy(_buffer, _settername, sizeof(_settername));
-    size_t offset = sizeof(_settername);// Bestimme die Position, an der das zweite Array beginnen soll
-    memcpy(_buffer + offset, _settervalue, sizeof(_settervalue));
-
-    // memcpy(packet.data + _counter, _settervalue, SETTER_VALUE_LENGTH);
-    // _counter += SETTER_VALUE_LENGTH;
-    memcpy(_packet.data, _buffer, sizeof(_buffer));
-
-    esp_err_t result = esp_now_send(macAddr, (uint8_t *) &_packet, sizeof(artnow_packet_t));// Sende das Paket
-    
     if (result == ESP_OK) {
-        Serial.printf("Slave setter (%s:%s) sent.\n",name.c_str(), _settervalue );
+        Serial.println("sent setter to slave");
     } else {
-        Serial.print("Error sending slave setter: ");
+        Serial.print("Error sending setter. ");
         Serial.println(result);
     }
-    Serial.printf("Slave setter (%s:%s) sent.\n",name.c_str(), value.c_str() );
 
-
-
-
-
-
-
-
-
-    // for(int i = 0; i < sizeof(_buffer); i++){
-    //     Serial.print(_buffer[i]);
+    // String receivedString(packet.data);
+    // String result;
+    // size_t length2 = strnlen((const char*)_buffer, SETTTER_NAME_LENGTH); // Länge des Null-terminierten Strings
+    // result.reserve(length2);
+    // for (size_t i = 0; i < length2; ++i) {
+    //     result += (char)_buffer[i];
     // }
+
+    // Serial.printf("string: %s\n", result.c_str());
+
+
 
 }
 

@@ -37,8 +37,8 @@ typedef struct {
     uint8_t universe;   // DMX universe for this data, 254 for slave request
     uint8_t sequence;   // Sequence number
     uint8_t part;       // part (0...2)
-    uint8_t data[];     // DMX data
-} __attribute__((packed)) artnow_packet_t;
+    uint8_t data[171];      // Zeiger auf DMX data
+} artnow_packet_t;
 
 typedef struct {
     uint8_t responsecode = 0;   //code for response
