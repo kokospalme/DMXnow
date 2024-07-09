@@ -40,6 +40,13 @@ typedef struct {
     uint8_t data[171];      // Zeiger auf DMX data
 } artnow_packet_t;
 
+
+typedef struct {
+    // uint8_t universe;   // DMX universe for this data, 254 for slave request
+    uint8_t data[25];
+} DMX_Packet;
+
+
 typedef struct {
     uint8_t responsecode = 0;   //code for response
     uint8_t macAddress[6];      //slave's mac addres

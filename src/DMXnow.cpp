@@ -9,8 +9,6 @@ uint8_t DMXnow::freePeer = 0;
 void DMXnow::init() {
     WiFi.mode(WIFI_STA);
     Serial.println("Initialisiere DMXnow...");
-
-    
     esp_now_init();
     
     
@@ -20,11 +18,21 @@ void DMXnow::init() {
     peerInfo.encrypt = false;
 
     if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-        Serial.println("Fehler beim Hinzufügen des Peers");
+        Serial.println("Fehler beim Hinzufügen des broadcast-Peers");
         return;
     }
-    Serial.println("Peer hinzugefügt");
+    Serial.println("broadcast-Peer hinzugefügt");
     esp_now_register_recv_cb(dataReceived);
+
+    uint8_t baseMac[6];
+    esp_err_t ret = esp_wifi_get_mac(WIFI_IF_STA, baseMac);
+    if (ret == ESP_OK) {
+        Serial.printf("My mac: %02X:%02X:%02X:%02X:%02X:%02X\n",
+                    baseMac[0], baseMac[1], baseMac[2],
+                    baseMac[3], baseMac[4], baseMac[5]);
+    } else {
+        Serial.println("Failed to read MAC address");
+    }
 }
 
 void DMXnow::sendDMXData() { //ToDO: daten komprimieren
@@ -57,17 +65,18 @@ send slave request
 */
 void DMXnow::sendSlaveRequest() {
     artnow_packet_t _packet;
-    packet = _packet;
 
-    packet.universe = SLAVE_CODE_REQUEST;
-    packet.sequence = 0; // Hier sollte eine sinnvolle Sequenznummer gesetzt werden
-    packet.part = 0;     // Teilnummer des Pakets
-    // Hier könnten weitere Daten hinzugefügt werden, je nach Bedarf
+    _packet.universe = SLAVE_CODE_REQUEST;
+    _packet.sequence = 0; // Hier sollte eine sinnvolle Sequenznummer gesetzt werden
+    _packet.part = 0;     // Teilnummer des Pakets
 
-    // Senden an Broadcast-Adresse
-    esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &packet, sizeof(artnow_packet_t));
+
+    DMX_Packet _test;
+    // _test.universe = 1;
+    esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &_packet, sizeof(_packet));
+
     if (result == ESP_OK) {
-        Serial.println("Slave request sent");
+        Serial.print("Slave request sent ... ");
     } else {
         Serial.print("Error sending slave request: ");
         Serial.println(result);
