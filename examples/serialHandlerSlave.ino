@@ -45,7 +45,7 @@ void loop() {
   serialInterface();
 }
 
-void serialInterface() {
+void serialInterface() { 
     String message = ""; // String to store the received message
 
     while (Serial.available() > 0) {
