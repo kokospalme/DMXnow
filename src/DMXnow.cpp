@@ -136,7 +136,7 @@ void DMXnow::dataReceived(const uint8_t *macAddr, const uint8_t *data, int len){
     Serial.printf("***** slave(%02X.%02X.%02X.%02X) *****\n",packet->macAddress[0],packet->macAddress[1],packet->macAddress[2],packet->macAddress[3]);
     Serial.printf("responsecode: %u\n",packet->responsecode);
     Serial.printf("universe: %u\n",packet->universe);
-    Serial.printf("dmxStart: %u \n",packet->dmxStart);
+    Serial.printf("dmxStart: %u \n",packet->dmxChannel);
     Serial.printf("dmxCount: %u\n",packet->dmxCount);
     Serial.printf("MAC:%02X.%02X.%02X.%02X\n",packet->macAddress[0],packet->macAddress[1],packet->macAddress[2],packet->macAddress[3]);
     Serial.printf("rssi: %i dB\n\n",packet->rssi);

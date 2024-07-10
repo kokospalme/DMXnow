@@ -1,6 +1,7 @@
 #include "DMXnow.h"
 
 artnow_slave_t DMXnow::mySlaveData;
+void (*DMXnow::setterCallback)(const uint8_t* macAddr, String name, String valueP);
 
 void DMXnow::initSlave(){
    WiFi.mode(WIFI_STA);
@@ -126,35 +127,39 @@ void DMXnow::slaveRequest(const uint8_t* macAddr, const uint8_t* data, int len){
 }
 
 void DMXnow::slaveReceiveSetter(const uint8_t* macAddr, const uint8_t* data, int len) {
-    if (len < sizeof(artnow_packet_t)) {
-        Serial.println("Received packet size mismatch");
-        return;
-    }
 
-    artnow_packet_t* packet = (artnow_packet_t*)data; // Daten in die Struktur artnow_packet_t kopieren
+    // Serial.printf("setter from %02x:%02x:%02x:%02x:%02x:%02x: ", macAddr[0], macAddr[1], macAddr[2], macAddr[3], macAddr[4], macAddr[5]);
 
-    // Daten dekodieren
+    artnow_packet_t* packet = (artnow_packet_t*)data; // put data to struct
+
+    // decode incoming package
     uint8_t universe = packet->universe;
     uint8_t sequence = packet->sequence;
     uint8_t part = packet->part;
 
-    // Extrahiere setter name und setter value aus packet->data
-    char _settername[SETTTER_NAME_LENGTH];
-    char _settervalue[SETTER_VALUE_LENGTH];
+    //data to string
+    char charArray[sizeof(packet->data) + 1]; // +1 für das Nullterminierungszeichen
+    memcpy(charArray, packet->data, sizeof(packet->data));
+    charArray[sizeof(packet->data)] = '\0'; // Nullterminierungszeichen hinzufügen
+
+    String decodedData = String(charArray);
+
+    // Serial.printf("Universe: %d, Sequence: %d, Part: %d, Data: %s ", universe, sequence, part, decodedData.c_str());
+    int separator = decodedData.indexOf(":");
+
+    if(separator<= 0){
+        // Serial.println("no value found.");
+        return;
+    }
+    String _name = decodedData.substring(0,separator);
+    String _value = decodedData.substring(separator+1);
+
+    // Serial.printf("Name: %s, value: %s\n",_name.c_str(), _value.c_str());
+
+    if (setterCallback) (*setterCallback)(macAddr, _name, _value);  //call callbackfunction
     
-    memcpy(_settername, packet->data, SETTTER_NAME_LENGTH);
-    memcpy(_settervalue, packet->data + SETTTER_NAME_LENGTH, SETTER_VALUE_LENGTH);
+}
 
-    // Nullterminierung hinzufügen, da memcpy keine Nullterminierung setzt
-    _settername[SETTTER_NAME_LENGTH - 1] = '\0';
-    _settervalue[SETTER_VALUE_LENGTH - 1] = '\0';
-
-    // Hier könnten weitere Verarbeitungsschritte erfolgen, z.B. Anwendung der erhaltenen Einstellungen
-
-    // Beispiel: Ausgabe der empfangenen Werte
-    Serial.printf("Received setter from %02x:%02x:%02x:%02x:%02x:%02x - Name: %s, Value: %s\n",
-                  macAddr[0], macAddr[1], macAddr[2], macAddr[3], macAddr[4], macAddr[5],
-                  _settername, _settervalue);
-
-    // Hier können je nach Bedarf weitere Aktionen hinzugefügt werden
+void DMXnow::setSetterCallback(void (*fptr)(const uint8_t* macAddr, String name, String value)) {
+    setterCallback = fptr;
 }

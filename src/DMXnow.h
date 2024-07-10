@@ -19,17 +19,6 @@ inspired from: https://github.com/Blinkinlabs/esp-now-dmx
 #define SLAVE_CODE_REQUEST 254  //get slaves' info
 #define SLAVE_CODE_SET 253
 #define SLAVE_CODE_GET 252
-#define SLAVE_SETGET_BRIGHTNESS "scene.brightness"
-#define SLAVE_SETGET_STROBE "scene.strobe"
-#define SLAVE_SETGET_PLAYMODE "scene.playmode"
-#define SLAVE_SETGET_VARIABLE1 "scene.variable1"
-#define SLAVE_SETGET_VARIABLE2 "scene.variable2"
-#define SLAVE_SETGET_SPEED "scene.speed"
-#define SLAVE_SETGET_SCALE "scene.scale"
-#define SLAVE_SETGET_RGB "scene.rgb"
-#define SLAVE_SETGET_RGB2 "scene.rgb2"
-#define SLAVE_SETGET_RGB3 "scene.rgb3"
-#define SLAVE_SETGET_RGB4 "scene.rgb4"
 
 #define LOG_TAG "ESP TX"
 
@@ -53,16 +42,9 @@ typedef struct {
     uint8_t wifiChannel = 0;    //wifichannel
     int8_t rssi = 0;           //signal strength
     uint8_t universe = 1;       //slave's universe from 0 ...16
-    uint16_t dmxStart = 1;      //slave's sartaddress, starting at 1
+    uint16_t dmxChannel = 1;      //slave's sartaddress, starting at 1
     uint16_t dmxCount = 3;      //number of dmxchannels used
 
-    // uint16_t scene_brightness = 0;    //scene
-    // uint8_t scene_strobe = 0;
-    // uint8_t scene_playmode = 0;
-    // uint8_t scene_variable1 = 0;
-    // uint8_t scene_variable2 = 0;
-    // uint8_t scene_rgb[4][3] = {{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}}; // 4x RGB
-    
 } __attribute__((packed)) artnow_slave_t;
 
 
@@ -84,6 +66,8 @@ public:
     static void registerPeer(const uint8_t* macAddr, int peerNo);
     static void sendSlaveresponse(const uint8_t* macMaster);
     static void slaveDataReceived(const uint8_t* macAddr, const uint8_t* data, int len);
+
+    static void setSetterCallback(void (*fptr)(const uint8_t* macAddr, String name, String value));
 private:
     static int findPeerByMac(const uint8_t* macAddr);
 
@@ -99,6 +83,8 @@ private:
     static esp_now_peer_info_t peerInfo;
     static esp_now_peer_info_t peers[PEERS_MAX];
     static uint8_t freePeer;
+
+    static void (*setterCallback)(const uint8_t* macAddr, String name, String valueP);
 };
 
 #endif // DMXNOW_H
