@@ -96,7 +96,8 @@ void DMXnow::slaveDataReceived(const uint8_t* macAddr, const uint8_t* data, int 
     uint8_t universe = packet->universe;// Nachricht dekodieren
 
     if(universe >= 0 && universe <=16){
-        //valid universe...
+        Serial.println("data...");
+        if(packet->part == 0) Serial.println(packet->data[0]);
     }else if(universe == SLAVE_CODE_REQUEST){
         slaveRequest(macAddr, data, len);
     }else if(universe == SLAVE_CODE_SET){
