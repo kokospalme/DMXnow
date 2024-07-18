@@ -6,13 +6,15 @@ inspired from: https://github.com/Blinkinlabs/esp-now-dmx
 #define DMXNOW_H
 
 #include <Arduino.h>
+#include <vector>
 #include <esp_now.h>
 #include <WiFi.h>
 #include <esp_log.h>
 #include <esp_err.h>
 #include "esp_wifi.h"
 
-#define PEERS_MAX 10
+
+#define SLAVES_MAX 255
 #define SETTTER_NAME_LENGTH 24  //bytes (+1 when sent)
 #define SETTER_VALUE_LENGTH 24  //bytes
 
@@ -22,18 +24,20 @@ inspired from: https://github.com/Blinkinlabs/esp-now-dmx
 
 #define LOG_TAG "ESP TX"
 
+#define DMXCHANNEL_PER_PACKET 171  //max. 171
+
 typedef struct {
     uint8_t universe;   // DMX universe for this data, 254 for slave request
     uint8_t sequence;   // Sequence number
     uint8_t part;       // part (0...2)
-    uint8_t data[171];      // Zeiger auf DMX data
+    uint8_t data[DMXCHANNEL_PER_PACKET];      // Zeiger auf DMX data
 } artnow_packet_t;
 
 
-typedef struct {
-    // uint8_t universe;   // DMX universe for this data, 254 for slave request
-    uint8_t data[25];
-} DMX_Packet;
+// typedef struct { //obsolet?
+//     // uint8_t universe;   // DMX universe for this data, 254 for slave request
+//     uint8_t data[25];
+// } DMX_Packet;
 
 
 typedef struct {
@@ -52,7 +56,7 @@ class DMXnow {
 public:
 //master stuff
     static void init();
-    static void sendDMXData();  //ToDo: komprimieren
+    static void sendDMXData(uint8_t universe, uint16_t length, uint8_t sequence, uint8_t* data);
     static void onDataSent(const uint8_t* macAddr, esp_now_send_status_t status);
 
     static void sendSlaveRequest(); //!new
@@ -60,10 +64,10 @@ public:
 
     static void dataReceived(const uint8_t *macAddr, const uint8_t *data, int len); //!new
     
-    
 // slave stuff
     static void initSlave();
-    static void registerPeer(const uint8_t* macAddr, int peerNo);
+    static void registerPeer(const uint8_t* macAddr);
+    static void deletePeer(const uint8_t* macAddr);
     static void sendSlaveresponse(const uint8_t* macMaster);
     static void slaveDataReceived(const uint8_t* macAddr, const uint8_t* data, int len);
 
@@ -75,16 +79,17 @@ private:
     static uint8_t broadcastAddress[6];
     static uint8_t* dmxData;
     static artnow_packet_t packet;  //packet for sending Data
+    static void addSlave(artnow_slave_t entry);
+    static void deleteSlave(int index);
+    static int findSlaveByMac(const uint8_t* macAddr);
 
     //slave stuff
     static void slaveRequest(const uint8_t* macAddr, const uint8_t* data, int len);
     static void slaveReceiveSetter(const uint8_t *macAddr, const uint8_t *data, int len);
     static artnow_slave_t mySlaveData;
-    static esp_now_peer_info_t peerInfo;
-    static esp_now_peer_info_t peers[PEERS_MAX];
-    static uint8_t freePeer;
 
-    static void (*setterCallback)(const uint8_t* macAddr, String name, String valueP);
+    static std::vector<artnow_slave_t> slaveArray;  //aray for slaves
+    static void (*setterCallback)(const uint8_t* macAddr, String name, String valueP);  //setter callback
 };
 
 #endif // DMXNOW_H

@@ -34,33 +34,35 @@ void DMXnow::initSlave(){
     }
 }
 
-/*
-register peer to list
-*/
-void DMXnow::registerPeer(const uint8_t* macAddr, int peerNo){
+
+void DMXnow::registerPeer(const uint8_t* macAddr){
+    esp_now_peer_info_t peerInfo;
+    memset(&peerInfo, 0, sizeof(peerInfo));
     memcpy(peerInfo.peer_addr, macAddr, 6);
-    // Serial.printf("register peer: %02X.%02X.%02X.%02X.%02X.%02X... ",peerInfo.peer_addr[0],peerInfo.peer_addr[1],peerInfo.peer_addr[2],peerInfo.peer_addr[3],peerInfo.peer_addr[4],peerInfo.peer_addr[5]);
     peerInfo.channel = 0;
     peerInfo.encrypt = false;
-    
-    if(peerNo >= PEERS_MAX){
-        Serial.println("too many peers!");
-        return;
-    }
-    esp_err_t result = esp_now_add_peer(&peerInfo);
+    peerInfo.ifidx = WIFI_IF_STA;
 
+    esp_err_t result = esp_now_add_peer(&peerInfo);
     if (result != ESP_OK) {
-        Serial.print("error by adding peer: ");
+        Serial.print("error by register peer: ");
         Serial.println(result);
         return;
     } else {
         Serial.println("Peer added.");
-        peers[peerNo] = peerInfo;
-        freePeer++;
-        // Serial.println("\nList:");
-        // for (int i = 0; i < PEERS_MAX; i++) {
-        //     Serial.printf("peer%u: %02X.%02X.%02X.%02X.%02X.%02X... \n",i,peers[i].peer_addr[0],peers[i].peer_addr[1],peers[i].peer_addr[2],peers[i].peer_addr[3],peers[i].peer_addr[4],peers[i].peer_addr[5]);
-        // }
+    }
+}
+
+// Funktion zum Löschen eines Peers
+void DMXnow::deletePeer(const uint8_t* macAddr) {
+
+    esp_err_t result = esp_now_del_peer(macAddr);
+
+    if (result != ESP_OK) {
+        Serial.print("error by deleting peer: ");
+        Serial.println(result);
+    } else {
+        Serial.println("Peer deleted.");
     }
 }
 
@@ -119,11 +121,15 @@ void DMXnow::slaveDataReceived(const uint8_t* macAddr, const uint8_t* data, int 
 
 void DMXnow::slaveRequest(const uint8_t* macAddr, const uint8_t* data, int len){
     Serial.printf("slave request from %02X.%02X.%02X.%02X.%02X.%02X... ",macAddr[0],macAddr[1],macAddr[2],macAddr[3],macAddr[4],macAddr[5]);
-    int _findPeer = findPeerByMac(macAddr);
-    if(_findPeer == -1){
-        registerPeer(macAddr,freePeer);    //new peer
-        sendSlaveresponse(macAddr);
-    }else(sendSlaveresponse(macAddr));   //known peer
+    // int _findPeer = findPeerByMac(macAddr);
+    
+    // if(_findPeer == -1){    //new peer
+    //     registerPeer(macAddr);
+    //     sendSlaveresponse(macAddr);
+    // }else(sendSlaveresponse(macAddr));   //known peer
+
+    registerPeer(macAddr);
+    sendSlaveresponse(macAddr);
 }
 
 void DMXnow::slaveReceiveSetter(const uint8_t* macAddr, const uint8_t* data, int len) {
