@@ -81,6 +81,8 @@ void DMXnow::sl_responseRequest(const uint8_t* macMaster) {
 }
 
 void DMXnow::sl_dataReceived(const uint8_t* macAddr, const uint8_t* data, int len) {
+    for(int i = 0; i <20; i++)Serial.printf("%u\t", data[i]);
+    Serial.println("");
     switch (data[0]) {
     case KEYYFRAME_CODE_UNCOMPRESSED: // KeyFrame uncompressed 1/3
         if(data[1] == SLAVE_CODE_REQUEST){  //slave request
@@ -93,17 +95,17 @@ void DMXnow::sl_dataReceived(const uint8_t* macAddr, const uint8_t* data, int le
         }else if(data[1] == SLAVE_CODE_GET){    //getter
             Serial.println("got getter");
             //ToDo: implementing getter
-        }else if (data[1] == 0) {
+        }else if (data[1] == mySlaveData.universe) {
         memcpy(dmxBuf[0], data + 2, len - 2);   //dmx data...
         }
         break;
     case KEYYFRAME_CODE_UNCOMPRESSED + 1: // KeyFrame uncompressed 2/3
-        if (data[1] == 0) {
+        if (data[1] == mySlaveData.universe) {
         memcpy(dmxBuf[0] + 171, data + 2, len - 2);
         }
         break;
     case KEYYFRAME_CODE_UNCOMPRESSED + 2: // KeyFrame uncompressed 3/3
-        if (data[1] == 0) {
+        if (data[1] == mySlaveData.universe) {
         memcpy(dmxBuf[0] + 343, data + 2, len - 2);
         }
         break;
