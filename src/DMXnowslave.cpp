@@ -9,18 +9,26 @@ void DMXnow::initSlave(){
 
     Serial.println("Initialisiere DMXnow...");
     esp_now_init();
-    esp_now_register_recv_cb(sl_dataReceived);
+    
 
     esp_now_peer_info_t peerInfo;
+    memset(&peerInfo, 0, sizeof(peerInfo));
     memcpy(peerInfo.peer_addr, broadcastAddress, 6);
-    peerInfo.channel = 0;
+    peerInfo.channel = 0;  // Der Kanal kann auf 0 gesetzt werden, um den aktuellen Kanal zu verwenden
     peerInfo.encrypt = false;
 
-    if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-        Serial.println("error by adding broadcast-peer");
-        return;
+    // Überprüfen, ob der Peer bereits hinzugefügt wurde
+    if (!esp_now_is_peer_exist(broadcastAddress)) {
+        esp_err_t addStatus = esp_now_add_peer(&peerInfo);
+        if (addStatus != ESP_OK) {
+            Serial.print("Error adding broadcast peer: ");
+            Serial.println(addStatus);
+            return;
+        }
     }
-
+    
+    esp_now_register_recv_cb(sl_dataReceived);
+    
     uint8_t baseMac[6];
     esp_err_t ret = esp_wifi_get_mac(WIFI_IF_STA, baseMac);
     if (ret == ESP_OK) {
@@ -39,18 +47,17 @@ void DMXnow::registerPeer(const uint8_t* macAddr){
     esp_now_peer_info_t peerInfo;
     memset(&peerInfo, 0, sizeof(peerInfo));
     memcpy(peerInfo.peer_addr, macAddr, 6);
-    peerInfo.channel = 0;
+    peerInfo.channel = 0;  // Der Kanal kann auf 0 gesetzt werden, um den aktuellen Kanal zu verwenden
     peerInfo.encrypt = false;
-    peerInfo.ifidx = WIFI_IF_STA;
 
-
-    esp_err_t result = esp_now_add_peer(&peerInfo);
-    if (result != ESP_OK) {
-        Serial.print("error by register peer: ");
-        Serial.println(result);
-        return;
-    } else {
-        // Serial.println("Peer added.");
+    // Überprüfen, ob der Peer bereits hinzugefügt wurde
+    if (!esp_now_is_peer_exist(macAddr)) {
+        esp_err_t addStatus = esp_now_add_peer(&peerInfo);
+        if (addStatus != ESP_OK) {
+            Serial.print("Error adding peer: ");
+            Serial.println(addStatus);
+            return;
+        }
     }
 }
 
