@@ -37,6 +37,7 @@ void DMXnow::init() {
     } else {
         Serial.println("Failed to read MAC address");
     }
+    Serial.println("");
 }
 
 void DMXnow::pushDMXData(uint8_t universe, uint16_t length, uint8_t sequence, uint8_t* data, bool send) { //ToDO: daten komprimieren
@@ -117,20 +118,21 @@ void DMXnow::sendQueueElement(uint8_t universe, bool compressed, uint8_t sequenc
 // from github
 void DMXnow::processNextSend() {
     // Iterate through the sendQueue and trigger the first match
-    for (int i = 0; i < SEND_QUEUE_SIZE; i++) {
-        if (xSemaphoreTake(dmxMutex, portMAX_DELAY) == pdTRUE) {
+    if (xSemaphoreTake(dmxMutex, portMAX_DELAY) == pdTRUE) {
+        for (int i = 0; i < SEND_QUEUE_SIZE; i++) {
+            // Serial.printf("looking on pos %i \n", i);
             if (sendQueue[i].toBeSent) {
-            esp_now_send(broadcastAddress, sendQueue[i].data, sendQueue[i].size);
-            Serial.println("sent.");
-            // Zero that element so it won't be sent again
-            memset(&(sendQueue[i]), 0, sizeof(SendQueueElem));
-            xSemaphoreGive(dmxMutex);  //give mutex
-            delay(1);
-            return; // Stop here. Next packet send will be triggered in the send-callback-function
+                // Serial.println("found.");
+                esp_now_send(broadcastAddress, sendQueue[i].data, sendQueue[i].size);
+                // Serial.println("sent.");
+                memset(&(sendQueue[i]), 0, sizeof(SendQueueElem));// Zero that element so it won't be sent again
+                xSemaphoreGive(dmxMutex);  //give mutex
+                delay(1);
+                return; // Stop here. Next packet send will be triggered in the send-callback-function
             }
         }
     }
-    // If control flow reaches here, the send queue has been emptied
+            // If control flow reaches here, the send queue has been emptied
     xSemaphoreGive(dmxMutex);  //give mutex
     delay(1);
     //   memset((void*)line5.c_str(), 0, 25);
@@ -144,18 +146,20 @@ slaves are answering their info
 */
 void DMXnow::sendSlaveRequest() {
     if (xSemaphoreTake(dmxMutex, portMAX_DELAY) == pdTRUE) {
-        if (!sendQueue[SEND_QUEUE_SIZE].toBeSent) {
+        if (!sendQueue[SEND_QUEUE_SIZE - 1].toBeSent) {
             // This element is free to be filled
-            sendQueue[SEND_QUEUE_SIZE].toBeSent = 1;
-            sendQueue[SEND_QUEUE_SIZE].size = SEND_QUEUE_OVERHEAD;
-            sendQueue[SEND_QUEUE_SIZE].data[0] = KEYYFRAME_CODE_UNCOMPRESSED; // uncompressed keyframe
-            sendQueue[SEND_QUEUE_SIZE].data[1] = SLAVE_CODE_REQUEST;
+            sendQueue[SEND_QUEUE_SIZE - 1].toBeSent = 1;
+            sendQueue[SEND_QUEUE_SIZE - 1].size = SEND_QUEUE_OVERHEAD;
+            sendQueue[SEND_QUEUE_SIZE - 1].data[0] = KEYYFRAME_CODE_UNCOMPRESSED; // uncompressed keyframe
+            sendQueue[SEND_QUEUE_SIZE - 1].data[1] = SLAVE_CODE_REQUEST;
+            // Serial.printf("send slave request on pos%u ...\n", SEND_QUEUE_SIZE - 1);
         }else{
             Serial.println("queue is busy");
         }
         xSemaphoreGive(dmxMutex);  //give mutex
         delay(1); 
     }
+    processNextSend();
 }
 
 void DMXnow::sendSlaveSetter(const uint8_t *macAddr, String name, String value) {
