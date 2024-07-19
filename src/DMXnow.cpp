@@ -117,27 +117,27 @@ void DMXnow::sendQueueElement(uint8_t universe, bool compressed, uint8_t sequenc
 }
 
 // from github
+
 void DMXnow::processNextSend() {
-    // Iterate through the sendQueue and trigger the first match
-    if (xSemaphoreTake(dmxMutex, portMAX_DELAY) == pdTRUE) {
-        for (int i = 0; i < SEND_QUEUE_SIZE; i++) {
+
+    if (xSemaphoreTake(dmxMutex, portMAX_DELAY) == pdTRUE) {    //take mutex
+        for (int i = 0; i < SEND_QUEUE_SIZE; i++) {// Iterate through the sendQueue and trigger the first match
             // Serial.printf("looking on pos %i \n", i);
             if (sendQueue[i].toBeSent) {
                 // Serial.println("found.");
-                esp_now_send(broadcastAddress, sendQueue[i].data, sendQueue[i].size);
+                esp_now_send(sendQueue[i].macAddr, sendQueue[i].data, sendQueue[i].size);
                 // Serial.println("sent.");
+                if(sendQueue[i].macAddr != broadcastAddress)deletePeer(sendQueue[i].macAddr);
                 memset(&(sendQueue[i]), 0, sizeof(SendQueueElem));// Zero that element so it won't be sent again
                 xSemaphoreGive(dmxMutex);  //give mutex
-                delay(1);
+                delay(1);   //breathe
                 return; // Stop here. Next packet send will be triggered in the send-callback-function
             }
         }
     }
-            // If control flow reaches here, the send queue has been emptied
+    // If control flow reaches here, the send queue has been emptied
     xSemaphoreGive(dmxMutex);  //give mutex
     delay(1);
-    //   memset((void*)line5.c_str(), 0, 25);
-    //   sprintf((char*)line4.c_str(), "QUEUE EMPTY");
 }
 
 
@@ -149,6 +149,7 @@ void DMXnow::sendSlaveRequest() {
     if (xSemaphoreTake(dmxMutex, portMAX_DELAY) == pdTRUE) {
         if (!sendQueue[SEND_QUEUE_SIZE - 1].toBeSent) {
             // This element is free to be filled
+            memcpy(sendQueue[SEND_QUEUE_SIZE - 1].macAddr, broadcastAddress, 6);
             sendQueue[SEND_QUEUE_SIZE - 1].toBeSent = 1;
             sendQueue[SEND_QUEUE_SIZE - 1].size = SEND_QUEUE_OVERHEAD;
             sendQueue[SEND_QUEUE_SIZE - 1].data[0] = KEYYFRAME_CODE_UNCOMPRESSED; // uncompressed keyframe
@@ -164,20 +165,15 @@ void DMXnow::sendSlaveRequest() {
 }
 
 void DMXnow::sendSlaveSetter(const uint8_t *macAddr, String name, String value) {
-    int _slave = findSlaveByMac(macAddr);
+
+    int _slave = findSlaveByMac(macAddr);   //find slave
     if(_slave < 0 ){  //return if slave is unknown
         Serial.println("no slave found.");
         return;
     }
+    registerPeer(macAddr);  //register peer
 
-    registerPeer(macAddr);
-
-    artnow_packet_t _packet;
-    _packet.universe = SLAVE_CODE_SET;
-    _packet.sequence = 0;
-    _packet.part = 0;
-
-    if(name.length() > SETTTER_NAME_LENGTH){
+    if(name.length() > SETTTER_NAME_LENGTH){    //name length of setter
         Serial.println("settername to long");
         return;
     }
@@ -185,7 +181,6 @@ void DMXnow::sendSlaveSetter(const uint8_t *macAddr, String name, String value) 
         Serial.println("value to long");
         return;
     }
-
     //buffer
     String bufString = name;
     bufString+= ":";
@@ -194,19 +189,26 @@ void DMXnow::sendSlaveSetter(const uint8_t *macAddr, String name, String value) 
     char charArray[bufString.length() + 1]; // +1 für das Nullterminierungszeichen
     bufString.toCharArray(charArray, sizeof(charArray));
 
-    memcpy(_packet.data, charArray, sizeof(_packet.data));    //char array to buffer
+    if (xSemaphoreTake(dmxMutex, portMAX_DELAY) == pdTRUE) {
+        if (!sendQueue[SEND_QUEUE_SIZE - 1].toBeSent) {
+            // This element is free to be filled
+            memcpy(sendQueue[SEND_QUEUE_SIZE - 1].macAddr, macAddr, 6);
+            sendQueue[SEND_QUEUE_SIZE - 1].toBeSent = 1;
+            sendQueue[SEND_QUEUE_SIZE - 1].size = SEND_QUEUE_OVERHEAD;
+            sendQueue[SEND_QUEUE_SIZE - 1].data[0] = KEYYFRAME_CODE_UNCOMPRESSED; // uncompressed keyframe
+            sendQueue[SEND_QUEUE_SIZE - 1].data[1] = SLAVE_CODE_SET;
+            memcpy(sendQueue[SEND_QUEUE_SIZE - 1].data + SEND_QUEUE_OVERHEAD, charArray, sizeof(charArray) + SEND_QUEUE_OVERHEAD);    //char array to buffer
 
-    // output
-    esp_err_t result = esp_now_send(macAddr, (uint8_t *)&_packet,  sizeof(_packet));
-
-    if (result == ESP_OK) {
-        Serial.println("sent setter to slave");
-    } else {
-        Serial.print("Error sending setter. ");
-        Serial.println(result);
+            // Serial.printf("send slave request on pos%u ...\n", SEND_QUEUE_SIZE - 1);
+        }else{
+            Serial.println("queue is busy");
+        }
+        xSemaphoreGive(dmxMutex);  //give mutex
+        delay(1); 
     }
+    processNextSend();
 
-    deletePeer(macAddr);
+    
 }
 
 

@@ -37,6 +37,7 @@ struct SendQueueElem {
   uint8_t toBeSent = 0;
   uint8_t size = 0;
   uint8_t data[250];
+  uint8_t macAddr[6] = {0,0,0,0,0,0};
 };
 
 typedef struct {

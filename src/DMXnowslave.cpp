@@ -46,14 +46,14 @@ void DMXnow::registerPeer(const uint8_t* macAddr){
     peerInfo.encrypt = false;
     peerInfo.ifidx = WIFI_IF_STA;
 
-    
+
     esp_err_t result = esp_now_add_peer(&peerInfo);
     if (result != ESP_OK) {
         Serial.print("error by register peer: ");
         Serial.println(result);
         return;
     } else {
-        Serial.println("Peer added.");
+        // Serial.println("Peer added.");
     }
 }
 
@@ -66,7 +66,7 @@ void DMXnow::deletePeer(const uint8_t* macAddr) {
         Serial.print("error by deleting peer: ");
         Serial.println(result);
     } else {
-        Serial.println("Peer deleted.");
+        // Serial.println("Peer deleted.");
     }
 }
 
