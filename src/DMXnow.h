@@ -74,9 +74,9 @@ public:
     
 // slave stuff
     static void initSlave();
+    static void setSlaveconfig(artnow_slave_t config);
     static void registerPeer(const uint8_t* macAddr);
     static void deletePeer(const uint8_t* macAddr);
-    static void sl_sendResponse(const uint8_t* macMaster);
     static void sl_dataReceived(const uint8_t* macAddr, const uint8_t* data, int len);
 
     static void setSetterCallback(void (*fptr)(const uint8_t* macAddr, String name, String value));
@@ -98,7 +98,7 @@ private:
     static void ma_dataSent(const uint8_t* mac, esp_now_send_status_t sendStatus);   //calback when message is sent
 
     //slave stuff
-    static void sl_responseRequest(const uint8_t* macAddr, const uint8_t* data, int len);
+    static void sl_responseRequest(const uint8_t* macMaster);
     static void sl_responseSetter(const uint8_t *macAddr, const uint8_t *data, int len);
     static artnow_slave_t mySlaveData;
 

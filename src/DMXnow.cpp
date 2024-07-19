@@ -67,7 +67,7 @@ void DMXnow::pushDMXData(uint8_t universe, uint16_t length, uint8_t sequence, ui
 
 // from Github
 void DMXnow::sendQueueElement(uint8_t universe, bool compressed, uint8_t sequence){
-    Serial.print("send...");
+    // Serial.print("send...");
    
     if (xSemaphoreTake(dmxMutex, portMAX_DELAY) == pdTRUE) {
     // uncompressed, raw frame

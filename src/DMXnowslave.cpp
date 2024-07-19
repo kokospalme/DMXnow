@@ -28,6 +28,10 @@ void DMXnow::initSlave(){
 
 }
 
+void DMXnow::setSlaveconfig(artnow_slave_t config){
+    mySlaveData = config;
+}
+
 
 void DMXnow::registerPeer(const uint8_t* macAddr){
     esp_now_peer_info_t peerInfo;
@@ -61,7 +65,7 @@ void DMXnow::deletePeer(const uint8_t* macAddr) {
 }
 
 // Funktion zum Senden der Antwort an den Master
-void DMXnow::sl_sendResponse(const uint8_t* macMaster) {
+void DMXnow::sl_responseRequest(const uint8_t* macMaster) {
     esp_read_mac(mySlaveData.macAddress, ESP_MAC_WIFI_STA);
     mySlaveData.rssi = WiFi.RSSI();
     mySlaveData.responsecode = SLAVE_CODE_REQUEST;
@@ -83,7 +87,7 @@ void DMXnow::sl_dataReceived(const uint8_t* macAddr, const uint8_t* data, int le
         if(data[1] == SLAVE_CODE_REQUEST){  //slave request
             Serial.println("got slave Request!");
             // sl_responseRequest(macAddr, data, len);
-            sl_sendResponse(NULL);
+            sl_responseRequest(NULL);
         }else if(data[1] == SLAVE_CODE_SET){    //setter
             Serial.println("got setter");
             sl_responseSetter(macAddr, data, len);
@@ -167,18 +171,18 @@ void DMXnow::sl_dataReceived(const uint8_t* macAddr, const uint8_t* data, int le
 }
 
 
-void DMXnow::sl_responseRequest(const uint8_t* macAddr, const uint8_t* data, int len){
-    Serial.printf("slave request from %02X.%02X.%02X.%02X.%02X.%02X... ",macAddr[0],macAddr[1],macAddr[2],macAddr[3],macAddr[4],macAddr[5]);
-    // int _findPeer = findPeerByMac(macAddr);
+// void DMXnow::sl_responseRequest(const uint8_t* macAddr, const uint8_t* data, int len){
+//     Serial.printf("slave request from %02X.%02X.%02X.%02X.%02X.%02X... ",macAddr[0],macAddr[1],macAddr[2],macAddr[3],macAddr[4],macAddr[5]);
+//     // int _findPeer = findPeerByMac(macAddr);
     
-    // if(_findPeer == -1){    //new peer   //ToDo: obsolet??
-    //     registerPeer(macAddr);
-    //     sendSlaveresponse(macAddr);
-    // }else(sendSlaveresponse(macAddr));   //known peer
+//     // if(_findPeer == -1){    //new peer   //ToDo: obsolet??
+//     //     registerPeer(macAddr);
+//     //     sendSlaveresponse(macAddr);
+//     // }else(sendSlaveresponse(macAddr));   //known peer
 
-    registerPeer(macAddr);
-    sl_sendResponse(macAddr);
-}
+//     registerPeer(macAddr);
+//     sl_sendResponse(macAddr);
+// }
 
 void DMXnow::sl_responseSetter(const uint8_t* macAddr, const uint8_t* data, int len) {
 
