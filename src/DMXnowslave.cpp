@@ -12,17 +12,14 @@ void DMXnow::initSlave(){
     esp_now_register_recv_cb(sl_dataReceived);
 
     esp_now_peer_info_t peerInfo;
-    memset(&peerInfo, 0, sizeof(peerInfo));
     memcpy(peerInfo.peer_addr, broadcastAddress, 6);
     peerInfo.channel = 0;
     peerInfo.encrypt = false;
-    peerInfo.ifidx = WIFI_IF_STA;
 
     if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-        Serial.println("Fehler beim Hinzufügen des broadcast-Peers");
+        Serial.println("error by adding broadcast-peer");
         return;
     }
-    Serial.println("broadcast-Peer hinzugefügt");
 
     uint8_t baseMac[6];
     esp_err_t ret = esp_wifi_get_mac(WIFI_IF_STA, baseMac);
@@ -77,7 +74,7 @@ void DMXnow::sl_sendResponse(const uint8_t* macMaster) {
     mySlaveData.responsecode = SLAVE_CODE_REQUEST;
 
     // Senden an Master
-    Serial.printf("sending to %02X.%02X.%02X.%02X.%02X.%02X... ",macMaster[0],macMaster[1],macMaster[2],macMaster[3],macMaster[4],macMaster[5]);
+    Serial.printf("sending to broadcast");
     // esp_err_t result = esp_now_send(macMaster, (uint8_t *)&mySlaveData,  sizeof(artnow_slave_t));
     esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&mySlaveData,  sizeof(artnow_slave_t));
 
