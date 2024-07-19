@@ -24,6 +24,9 @@ void DMXnow::initSlave(){
     }
 
     Serial.println("");
+
+
+    sl_sendResponse(NULL);
 }
 
 
@@ -66,9 +69,7 @@ void DMXnow::sl_sendResponse(const uint8_t* macMaster) {
 
     // Senden an Master
     Serial.printf("sending to broadcast");
-    // esp_err_t result = esp_now_send(macMaster, (uint8_t *)&mySlaveData,  sizeof(artnow_slave_t));
-    uint8_t _data[4] = {1,2,3,4};
-    esp_err_t result = esp_now_send(broadcastAddress, _data,  sizeof(_data));
+    esp_err_t result = esp_now_send(macMaster, (uint8_t *)&mySlaveData,  sizeof(artnow_slave_t));
 
     if (result == ESP_OK) {
         Serial.println("Response sent to master");
@@ -83,7 +84,8 @@ void DMXnow::sl_dataReceived(const uint8_t* macAddr, const uint8_t* data, int le
     case KEYYFRAME_CODE_UNCOMPRESSED: // KeyFrame uncompressed 1/3
         if(data[1] == SLAVE_CODE_REQUEST){  //slave request
             Serial.println("got slave Request!");
-            sl_responseRequest(macAddr, data, len);
+            // sl_responseRequest(macAddr, data, len);
+            sl_sendResponse(NULL);
         }else if(data[1] == SLAVE_CODE_SET){    //setter
             Serial.println("got setter");
             sl_responseSetter(macAddr, data, len);
