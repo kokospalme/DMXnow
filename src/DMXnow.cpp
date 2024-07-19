@@ -26,7 +26,7 @@ void DMXnow::init() {
     // }
     // Serial.println("broadcast-Peer added");
     registerPeer(broadcastAddress);
-    
+
     esp_now_register_recv_cb(ma_dataReceived);
     esp_now_register_send_cb(ma_dataSent);
 
@@ -167,28 +167,28 @@ void DMXnow::sendSlaveRequest() {
 }
 
 void DMXnow::sendSlaveSetter(const uint8_t *macAddr, String name, String value) {
-
-    int _slave = findSlaveByMac(macAddr);   //find slave
-    if(_slave < 0 ){  //return if slave is unknown
+    int _slave = findSlaveByMac(macAddr); // find slave
+    if (_slave < 0) { // return if slave is unknown
         Serial.println("no slave found.");
         return;
     }
-    registerPeer(macAddr);  //register peer
+    registerPeer(macAddr); // register peer
 
-    if(name.length() > SETTTER_NAME_LENGTH){    //name length of setter
-        Serial.println("settername to long");
+    if (name.length() > SETTTER_NAME_LENGTH) { // name length of setter
+        Serial.println("setter name too long");
         return;
     }
-    if(value.length() > SETTER_VALUE_LENGTH){
-        Serial.println("value to long");
+    if (value.length() > SETTER_VALUE_LENGTH) { // value length of setter
+        Serial.println("value too long");
         return;
     }
-    //buffer
+
+    // buffer
     String bufString = name;
-    bufString+= ":";
-    bufString+=value;
+    bufString += ":";
+    bufString += value;
 
-    char charArray[bufString.length() + 1]; // +1 für das Nullterminierungszeichen
+    char charArray[bufString.length() + 1]; // +1 for the null terminator
     bufString.toCharArray(charArray, sizeof(charArray));
 
     if (xSemaphoreTake(dmxMutex, portMAX_DELAY) == pdTRUE) {
@@ -196,22 +196,21 @@ void DMXnow::sendSlaveSetter(const uint8_t *macAddr, String name, String value) 
             // This element is free to be filled
             memcpy(sendQueue[SEND_QUEUE_SIZE - 1].macAddr, macAddr, 6);
             sendQueue[SEND_QUEUE_SIZE - 1].toBeSent = 1;
-            sendQueue[SEND_QUEUE_SIZE - 1].size = SEND_QUEUE_OVERHEAD;
+            sendQueue[SEND_QUEUE_SIZE - 1].size = SEND_QUEUE_OVERHEAD + bufString.length() + 1; // include payload size and null terminator
             sendQueue[SEND_QUEUE_SIZE - 1].data[0] = KEYYFRAME_CODE_UNCOMPRESSED; // uncompressed keyframe
             sendQueue[SEND_QUEUE_SIZE - 1].data[1] = SLAVE_CODE_SET;
-            memcpy(sendQueue[SEND_QUEUE_SIZE - 1].data + SEND_QUEUE_OVERHEAD, charArray, sizeof(charArray) + SEND_QUEUE_OVERHEAD);    //char array to buffer
+            memcpy(sendQueue[SEND_QUEUE_SIZE - 1].data + SEND_QUEUE_OVERHEAD, charArray, bufString.length() + 1); // char array to buffer
 
             // Serial.printf("send slave request on pos%u ...\n", SEND_QUEUE_SIZE - 1);
-        }else{
+        } else {
             Serial.println("queue is busy");
         }
-        xSemaphoreGive(dmxMutex);  //give mutex
-        delay(1); 
+        xSemaphoreGive(dmxMutex); // give mutex
+        delay(1);
     }
     processNextSend();
-
-    
 }
+
 
 
 /*

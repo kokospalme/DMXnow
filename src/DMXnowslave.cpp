@@ -183,7 +183,7 @@ void DMXnow::sl_responseRequest(const uint8_t* macAddr, const uint8_t* data, int
 void DMXnow::sl_responseSetter(const uint8_t* macAddr, const uint8_t* data, int len) {
 
     // Serial.printf("setter from %02x:%02x:%02x:%02x:%02x:%02x: ", macAddr[0], macAddr[1], macAddr[2], macAddr[3], macAddr[4], macAddr[5]);
-
+    Serial.printf("len:%u\n", len);
     if (len <= SEND_QUEUE_OVERHEAD) {
         Serial.println("No valid data found.");
         return; // return if data length is less than or equal to overhead
