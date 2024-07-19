@@ -1,7 +1,10 @@
 #include "DMXnow.h"
 
 artnow_slave_t DMXnow::mySlaveData;
-void (*DMXnow::setterCallback)(const uint8_t* macAddr, String name, String valueP);
+void (*DMXnow::setterCallback)(const uint8_t* macAddr, String name, String valueP); //setter callback
+void (*DMXnow::dmxCallback)(uint8_t* data);  //dmx callback
+
+
 
 void DMXnow::initSlave(){
     dmxMutex = xSemaphoreCreateMutex();  // Create the mutex
@@ -81,8 +84,10 @@ void DMXnow::sl_responseRequest(const uint8_t* macMaster) {
 }
 
 void DMXnow::sl_dataReceived(const uint8_t* macAddr, const uint8_t* data, int len) {
-    for(int i = 0; i <20; i++)Serial.printf("%u\t", data[i]);
-    Serial.println("");
+    // for(int i = 0; i <5; i++)Serial.printf("%u\t", data[i]);
+    // Serial.println("");
+
+    bool newDmxdata = false;
     switch (data[0]) {
     case KEYYFRAME_CODE_UNCOMPRESSED: // KeyFrame uncompressed 1/3
         if(data[1] == SLAVE_CODE_REQUEST){  //slave request
@@ -107,6 +112,7 @@ void DMXnow::sl_dataReceived(const uint8_t* macAddr, const uint8_t* data, int le
     case KEYYFRAME_CODE_UNCOMPRESSED + 2: // KeyFrame uncompressed 3/3
         if (data[1] == mySlaveData.universe) {
         memcpy(dmxBuf[0] + 343, data + 2, len - 2);
+        newDmxdata = true;
         }
         break;
     // case 0x14: // KeyFrame compressed 1/1    //ToDo: compressing
@@ -139,6 +145,13 @@ void DMXnow::sl_dataReceived(const uint8_t* macAddr, const uint8_t* data, int le
     //     dmxCompSize += len - 2;
     //     unCompressDmxBuf(data[1]);
     //     break;
+    }
+
+    if(newDmxdata){
+        if (dmxCallback) {
+            // Serial.println("callback...");
+            (*dmxCallback)(dmxBuf[0]); // call callback function if set
+        }
     }
 
 
@@ -225,4 +238,8 @@ void DMXnow::sl_responseSetter(const uint8_t* macAddr, const uint8_t* data, int 
 
 void DMXnow::setSetterCallback(void (*fptr)(const uint8_t* macAddr, String name, String value)) {
     setterCallback = fptr;
+}
+
+void DMXnow::setDmxCallback(void (*fptr)(uint8_t* data)) {
+    dmxCallback = fptr;
 }

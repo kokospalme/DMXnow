@@ -80,6 +80,7 @@ public:
     static void sl_dataReceived(const uint8_t* macAddr, const uint8_t* data, int len);
 
     static void setSetterCallback(void (*fptr)(const uint8_t* macAddr, String name, String value));
+    static void setDmxCallback(void (*fptr)(uint8_t* data));
 private:
     static int findPeerByMac(const uint8_t* macAddr);
 
@@ -104,6 +105,7 @@ private:
 
     static std::vector<artnow_slave_t> slaveArray;  //aray for slaves
     static void (*setterCallback)(const uint8_t* macAddr, String name, String valueP);  //setter callback
+    static void (*dmxCallback)(uint8_t* data);  //dmx callback
 
     //div. stuff
     static SendQueueElem sendQueue[SEND_QUEUE_SIZE];

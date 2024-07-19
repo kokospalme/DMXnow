@@ -1,55 +1,39 @@
 /*
-old exmaple!! may not work without editing...
+Artnet2DMXnow_master example
+mySerialhandler.h
+
+This header file contains functions for handling and validating serial commands. It processes commands received via the serial interface to configure and control the slave devices.
+
+Key functionalities include:
+- **serialInterface():** Reads and processes serial commands. Supports commands for selecting a slave, setting the DMX universe and channel, and other configuration settings.
+- **isNumber():** Checks if a given string contains only numeric characters.
+- **getUint8_tFromMessage() and getIntFromMessage():** Extracts integer values from serial messages.
+- **getMacFromMessage():** Parses and validates a MAC address from a serial command message.
+- **isHexadecimal():** Validates if a string contains hexadecimal characters.
+
+This file is crucial for processing serial commands and interacting with slave devices.
+
+Licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0).
+To view a copy of this license, visit http://creativecommons.org/licenses/by/4.0/
 */
 
+
+#ifndef MYSERIALHANDLER_H
+#define MYSERIALHANDLER_H
+
 #include <Arduino.h>
-#include <Artnet.h>
-#include <AsyncUDP_ESP32_SC_Ethernet.h> 
 #include <DMXnow.h>
-
-#define SLAVE_SET_PREFIX "set."
-#define SLAVE_GET_PREFIX "get."
-#define SLAVE_SETGET_SELECT "slavemac" //select slave
-#define SLAVE_SETGET_UNIVERSE "slave.universe" // universe 0...16 [uint8_t]
-#define SLAVE_SETGET_DMXCHANNEL "slave.dmxchannel"  // dmx channel 1 ...512 [uint16_t]
-
-#define SLAVE_SETGET_BRIGHTNESS "scene.brightness" // brightness (8bit) [uint8_t]
-#define SLAVE_SETGET_BRIGHTNESS16 "scene.brightness16" // brightness (16bit) [uint16_t]
-#define SLAVE_SETGET_STROBE "scene.strobe"  // strobevalue in Strobes per second [uint8_t]
-#define SLAVE_SETGET_STROBEMODE "scene.strobemode" 
-#define SLAVE_SETGET_BRIGHTNESS "scene.brightness" // brightness (8bit) [uint8_t]
-#define SLAVE_SETGET_RGB "scene.rgb" // rgb
-#define SLAVE_SETGET_RGB "scene.rgb2" // rgb2
-#define SLAVE_SETGET_RGB "scene.rgb3" // rgb3
-#define SLAVE_SETGET_RGB "scene.rgb4" // rgb4
-
-
-uint8_t macSlave1[] = {0x60, 0x55, 0xF9, 0x21, 0x9E, 0x14};  //!for testing only
-uint8_t broadcastAddress[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-uint8_t selectedSlave [] = {0,0,0,0,0,0};//slave1 60:55:F9:21:9E:14
+#include "myDevice.h"
 
 // Serial interface
 void serialInterface();
-bool validateMessage(String message, String prefix);
+bool validateMessage(String message, String prefix);    //ToDo: implement
 bool isNumber(String str);
 int getIntFromMessage(String message);
 int getUint8_tFromMessage(String message);
 bool getMacFromMessage(String message);
 bool getMacFromMessage(String message, uint8_t* macAddress);
 bool isHexadecimal(String str);
-
-void setup() {
-  Serial.begin(115200);
-  delay(2000);
-  DMXnow::init();
-  DMXnow::registerPeer(macSlave1); //for texting only
-  delay(1000);
-  DMXnow::sendSlaveRequest();
-}
-
-void loop() {
-  serialInterface();
-}
 
 void serialInterface() {
     String message = ""; // String to store the received message
@@ -71,6 +55,8 @@ void serialInterface() {
       if(message.startsWith(SLAVE_SETGET_SELECT)){  //select slave
         if(getMacFromMessage(message, selectedSlave)){
           Serial.printf("select Slave %02X:%02X:%02X:%02X:%02X:%02X.\n", selectedSlave[0], selectedSlave[1], selectedSlave[2], selectedSlave[3], selectedSlave[4], selectedSlave[5]);
+        }else{
+            Serial.println("unknown mac.");
         }
       }else if(message.startsWith(SLAVE_SETGET_UNIVERSE)){  //universe
         uint8_t _universe = (uint8_t) getUint8_tFromMessage(message);
@@ -211,3 +197,6 @@ bool isHexadecimal(String str) {
     }
     return true;
 }
+
+
+#endif
