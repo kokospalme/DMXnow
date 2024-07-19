@@ -5,28 +5,12 @@ void (*DMXnow::setterCallback)(const uint8_t* macAddr, String name, String value
 
 void DMXnow::initSlave(){
     dmxMutex = xSemaphoreCreateMutex();  // Create the mutex
-    WiFi.mode(WIFI_STA);
 
-    Serial.println("Initialisiere DMXnow...");
+    WiFi.mode(WIFI_STA);
+    Serial.println("Initialisiere DMXnow[slave]...");
     esp_now_init();
     
-
-    esp_now_peer_info_t peerInfo;
-    memset(&peerInfo, 0, sizeof(peerInfo));
-    memcpy(peerInfo.peer_addr, broadcastAddress, 6);
-    peerInfo.channel = 0;  // Der Kanal kann auf 0 gesetzt werden, um den aktuellen Kanal zu verwenden
-    peerInfo.encrypt = false;
-
-    // Überprüfen, ob der Peer bereits hinzugefügt wurde
-    if (!esp_now_is_peer_exist(broadcastAddress)) {
-        esp_err_t addStatus = esp_now_add_peer(&peerInfo);
-        if (addStatus != ESP_OK) {
-            Serial.print("Error adding broadcast peer: ");
-            Serial.println(addStatus);
-            return;
-        }
-    }
-    
+    registerPeer(broadcastAddress);
     esp_now_register_recv_cb(sl_dataReceived);
     
     uint8_t baseMac[6];

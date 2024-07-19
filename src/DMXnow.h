@@ -89,6 +89,7 @@ private:
     static artnow_packet_t packet;  //ToDo: obsolet?? packet for sending Data
 
     static void addSlave(artnow_slave_t entry); //add slave
+    static void addBroadastpeer();
     static void deleteSlave(int index); //remote slave from list
     static int findSlaveByMac(const uint8_t* macAddr);  //searching slaves list
     static void sendQueueElement(uint8_t universe, bool compressed, uint8_t sequence);  //put element in queue (dmx data or setter/getter etc.)

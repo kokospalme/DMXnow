@@ -15,16 +15,18 @@ void DMXnow::init() {
     esp_now_init();
     
     
-    esp_now_peer_info_t peerInfo;
-    memcpy(peerInfo.peer_addr, broadcastAddress, 6);
-    peerInfo.channel = 0;
-    peerInfo.encrypt = false;
+    // esp_now_peer_info_t peerInfo;    //ToDo: obsolet?
+    // memcpy(peerInfo.peer_addr, broadcastAddress, 6);
+    // peerInfo.channel = 0;
+    // peerInfo.encrypt = false;
 
-    if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-        Serial.println("error by adding broadcast-peer");
-        return;
-    }
+    // if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+    //     Serial.println("error by adding broadcast-peer");
+    //     return;
+    // }
     // Serial.println("broadcast-Peer added");
+    registerPeer(broadcastAddress);
+    
     esp_now_register_recv_cb(ma_dataReceived);
     esp_now_register_send_cb(ma_dataSent);
 
