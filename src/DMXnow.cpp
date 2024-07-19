@@ -11,7 +11,7 @@ SemaphoreHandle_t DMXnow::dmxMutex = NULL;
 void DMXnow::init() {
     dmxMutex = xSemaphoreCreateMutex();  // Create the mutex
     WiFi.mode(WIFI_STA);
-    Serial.println("initialize DMXnow [Master]");
+    // Serial.println("initialize DMXnow [Master]");
     esp_now_init();
     
     

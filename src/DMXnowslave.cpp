@@ -26,7 +26,6 @@ void DMXnow::initSlave(){
     Serial.println("");
 
 
-    sl_sendResponse(NULL);
 }
 
 
@@ -185,28 +184,39 @@ void DMXnow::sl_responseSetter(const uint8_t* macAddr, const uint8_t* data, int 
 
     // Serial.printf("setter from %02x:%02x:%02x:%02x:%02x:%02x: ", macAddr[0], macAddr[1], macAddr[2], macAddr[3], macAddr[4], macAddr[5]);
 
-    //data to string
-    char charArray[sizeof(data) - SEND_QUEUE_OVERHEAD + 1]; // +1 für das Nullterminierungszeichen
-    memcpy(charArray, data + SEND_QUEUE_OVERHEAD, sizeof(charArray));
-    charArray[sizeof(data) - SEND_QUEUE_OVERHEAD + 1] = '\0'; // Nullterminierungszeichen hinzufügen
+    if (len <= SEND_QUEUE_OVERHEAD) {
+        Serial.println("No valid data found.");
+        return; // return if data length is less than or equal to overhead
+    }
 
-    String decodedData = String(charArray);
+    int payloadSize = len - SEND_QUEUE_OVERHEAD; // calculate the actual payload size
+
+    char charArray[payloadSize + 1]; // allocate memory for the string including null-terminator
+
+    memcpy(charArray, data + SEND_QUEUE_OVERHEAD, payloadSize); // copy the payload data
+    charArray[payloadSize] = '\0'; // add null-terminator
+
+    String decodedData = String(charArray); // convert char array to String
 
     // Serial.printf("Universe: %d, Sequence: %d, Part: %d, Data: %s ", universe, sequence, part, decodedData.c_str());
-    int separator = decodedData.indexOf(":");
+    int separator = decodedData.indexOf(":"); // find the separator
 
-    if(separator<= 0){
+    if (separator <= 0) {
         // Serial.println("no value found.");
-        return;
+        return; // return if no valid separator is found
     }
-    String _name = decodedData.substring(0,separator);
-    String _value = decodedData.substring(separator+1);
 
-    Serial.printf("Name: %s, value: %s\n",_name.c_str(), _value.c_str());
+    String _name = decodedData.substring(0, separator); // extract name
+    String _value = decodedData.substring(separator + 1); // extract value
 
-    if (setterCallback) (*setterCallback)(macAddr, _name, _value);  //call callbackfunction
-    
+    Serial.printf("Name: %s, Value: %s\n", _name.c_str(), _value.c_str()); // print name and value
+
+    if (setterCallback) {
+        (*setterCallback)(macAddr, _name, _value); // call callback function if set
+    }
 }
+
+
 
 void DMXnow::setSetterCallback(void (*fptr)(const uint8_t* macAddr, String name, String value)) {
     setterCallback = fptr;
