@@ -60,7 +60,10 @@ void DMXnow::pushDMXData(uint8_t universe, uint16_t length, uint8_t sequence, ui
         xSemaphoreGive(dmxMutex);
         delay(2);
     }
-    if(send)sendQueueElement(universe, false, sequence);    //send if true
+    if(send){
+        sendQueueElement(universe, false, sequence);    //send if true
+        processNextSend();
+    }
 
 
 }
@@ -76,6 +79,7 @@ void DMXnow::sendQueueElement(uint8_t universe, bool compressed, uint8_t sequenc
         for (int i = 0; i < SEND_QUEUE_SIZE; i++) {
             if (!sendQueue[i].toBeSent) {
             // This element is free to be filled
+            memcpy(sendQueue[i].macAddr, broadcastAddress, 6);
             sendQueue[i].toBeSent = 1;
             sendQueue[i].size = 173;
             sendQueue[i].data[0] = _keyframe; // uncompressed keyframe, part 1/3
@@ -89,6 +93,7 @@ void DMXnow::sendQueueElement(uint8_t universe, bool compressed, uint8_t sequenc
         for (int i = 0; i < SEND_QUEUE_SIZE; i++) {
             if (!sendQueue[i].toBeSent) {
             // This element is free to be filled
+            memcpy(sendQueue[i].macAddr, broadcastAddress, 6);
             sendQueue[i].toBeSent = 1;
             sendQueue[i].size = 173;
             sendQueue[i].data[0] = _keyframe + 1; // uncompressed keyframe, part 2/3
@@ -102,6 +107,7 @@ void DMXnow::sendQueueElement(uint8_t universe, bool compressed, uint8_t sequenc
         for (int i = 0; i < SEND_QUEUE_SIZE; i++) {
             if (!sendQueue[i].toBeSent) {
             // This element is free to be filled
+            memcpy(sendQueue[i].macAddr, broadcastAddress, 6);
             sendQueue[i].toBeSent = 1;
             sendQueue[i].size = 172;
             sendQueue[i].data[0] = _keyframe +SEND_QUEUE_OVERHEAD; // uncompressed keyframe, part 3/3
@@ -126,10 +132,18 @@ void DMXnow::processNextSend() {
         for (int i = 0; i < SEND_QUEUE_SIZE; i++) {// Iterate through the sendQueue and trigger the first match
             // Serial.printf("looking on pos %i \n", i);
             if (sendQueue[i].toBeSent) {
+            //    Serial.printf("sent to mac: %02X:%02X:%02X:%02X:%02X:%02X\n",
+            //         sendQueue[i].macAddr[0], sendQueue[i].macAddr[1], sendQueue[i].macAddr[2],
+            //         sendQueue[i].macAddr[3], sendQueue[i].macAddr[4], sendQueue[i].macAddr[5]);
                 // Serial.println("found.");
                 esp_now_send(sendQueue[i].macAddr, sendQueue[i].data, sendQueue[i].size);
                 // Serial.println("sent.");
-                if(sendQueue[i].macAddr != broadcastAddress)deletePeer(sendQueue[i].macAddr);
+                bool isBroadcast = true;
+                for(int j = 0; j < 6; j++){
+                    if(sendQueue[i].macAddr[j] != broadcastAddress[j])isBroadcast = false;
+                }
+                if(!isBroadcast)deletePeer(sendQueue[i].macAddr);
+                
                 memset(&(sendQueue[i]), 0, sizeof(SendQueueElem));// Zero that element so it won't be sent again
                 xSemaphoreGive(dmxMutex);  //give mutex
                 delay(1);   //breathe
