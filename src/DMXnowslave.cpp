@@ -70,7 +70,6 @@ void DMXnow::sl_responseRequest(const uint8_t* macMaster) {
     mySlaveData.rssi = WiFi.RSSI();
     mySlaveData.responsecode = SLAVE_CODE_REQUEST;
 
-
     esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&mySlaveData,  sizeof(artnow_slave_t)); //send to master
 
     if (result == ESP_OK) {
