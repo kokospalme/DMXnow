@@ -195,17 +195,10 @@ void DMXnow::sl_responseSetter(const uint8_t* macAddr, const uint8_t* data, int 
 
     // Serial.printf("setter from %02x:%02x:%02x:%02x:%02x:%02x: ", macAddr[0], macAddr[1], macAddr[2], macAddr[3], macAddr[4], macAddr[5]);
 
-    artnow_packet_t* packet = (artnow_packet_t*)data; // put data to struct
-
-    // decode incoming package
-    uint8_t universe = packet->universe;
-    uint8_t sequence = packet->sequence;
-    uint8_t part = packet->part;
-
     //data to string
-    char charArray[sizeof(packet->data) + 1]; // +1 für das Nullterminierungszeichen
-    memcpy(charArray, packet->data, sizeof(packet->data));
-    charArray[sizeof(packet->data)] = '\0'; // Nullterminierungszeichen hinzufügen
+    char charArray[sizeof(data) - SEND_QUEUE_OVERHEAD + 1]; // +1 für das Nullterminierungszeichen
+    memcpy(charArray, data + SEND_QUEUE_OVERHEAD, sizeof(charArray));
+    charArray[sizeof(data) - SEND_QUEUE_OVERHEAD + 1] = '\0'; // Nullterminierungszeichen hinzufügen
 
     String decodedData = String(charArray);
 
@@ -219,7 +212,7 @@ void DMXnow::sl_responseSetter(const uint8_t* macAddr, const uint8_t* data, int 
     String _name = decodedData.substring(0,separator);
     String _value = decodedData.substring(separator+1);
 
-    // Serial.printf("Name: %s, value: %s\n",_name.c_str(), _value.c_str());
+    Serial.printf("Name: %s, value: %s\n",_name.c_str(), _value.c_str());
 
     if (setterCallback) (*setterCallback)(macAddr, _name, _value);  //call callbackfunction
     
