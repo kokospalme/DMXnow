@@ -4,8 +4,9 @@ artnow_slave_t DMXnow::mySlaveData;
 void (*DMXnow::setterCallback)(const uint8_t* macAddr, String name, String valueP);
 
 void DMXnow::initSlave(){
-   WiFi.mode(WIFI_STA);
-    
+    dmxMutex = xSemaphoreCreateMutex();  // Create the mutex
+    WiFi.mode(WIFI_STA);
+
     Serial.println("Initialisiere DMXnow...");
     esp_now_init();
     esp_now_register_recv_cb(sl_dataReceived);
