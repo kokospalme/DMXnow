@@ -8,7 +8,7 @@ void DMXnow::initSlave(){
     
     Serial.println("Initialisiere DMXnow...");
     esp_now_init();
-    esp_now_register_recv_cb(slaveDataReceived);
+    esp_now_register_recv_cb(sl_dataReceived);
 
     esp_now_peer_info_t peerInfo;
     memset(&peerInfo, 0, sizeof(peerInfo));
@@ -67,7 +67,7 @@ void DMXnow::deletePeer(const uint8_t* macAddr) {
 }
 
 // Funktion zum Senden der Antwort an den Master
-void DMXnow::sendSlaveresponse(const uint8_t* macMaster) {
+void DMXnow::sl_sendResponse(const uint8_t* macMaster) {
     esp_read_mac(mySlaveData.macAddress, ESP_MAC_WIFI_STA);
     mySlaveData.rssi = WiFi.RSSI();
     mySlaveData.responsecode = SLAVE_CODE_REQUEST;
@@ -85,28 +85,82 @@ void DMXnow::sendSlaveresponse(const uint8_t* macMaster) {
     }
 }
 
-void DMXnow::slaveDataReceived(const uint8_t* macAddr, const uint8_t* data, int len) {
-    // Sicherstellen, dass die Länge der empfangenen Daten korrekt ist
-    if (len < sizeof(artnow_packet_t)) {
-        Serial.println("Received packet size mismatch");
-        return;
+void DMXnow::sl_dataReceived(const uint8_t* macAddr, const uint8_t* data, int len) {
+    switch (data[0]) {
+    case KEYYFRAME_CODE_UNCOMPRESSED: // KeyFrame uncompressed 1/3
+        if(data[1] == SLAVE_CODE_REQUEST){  //slave request
+            Serial.println("got slave Request!");
+            sl_responseRequest(macAddr, data, len);
+        }else if(data[1] == SLAVE_CODE_SET){    //setter
+            Serial.println("got setter");
+            sl_responseSetter(macAddr, data, len);
+        }else if(data[1] == SLAVE_CODE_GET){    //getter
+            Serial.println("got getter");
+            //ToDo: implementing getter
+        }else if (data[1] == 0) {
+        memcpy(dmxBuf[0], data + 2, len - 2);   //dmx data...
+        }
+        break;
+    case KEYYFRAME_CODE_UNCOMPRESSED + 1: // KeyFrame uncompressed 2/3
+        if (data[1] == 0) {
+        memcpy(dmxBuf[0] + 171, data + 2, len - 2);
+        }
+        break;
+    case KEYYFRAME_CODE_UNCOMPRESSED + 2: // KeyFrame uncompressed 3/3
+        if (data[1] == 0) {
+        memcpy(dmxBuf[0] + 343, data + 2, len - 2);
+        }
+        break;
+    // case 0x14: // KeyFrame compressed 1/1    //ToDo: compressing
+    //     memset(dmxCompBuf, 0, 600);
+    //     memcpy(dmxCompBuf, data + 2, len - 2);
+    //     dmxCompSize = len - 2;
+    //     unCompressDmxBuf(data[1]);
+    //     break;
+    // case 0x15: // KeyFrame compressed 1/2
+    //     memset(dmxCompBuf, 0, 600);
+    //     memcpy(dmxCompBuf, data + 2, len - 2);
+    //     dmxCompSize = len - 2;
+    //     break;
+    // case 0x16: // KeyFrame compressed 2/2
+    //     memcpy(dmxCompBuf + 230, data + 2, len - 2);
+    //     dmxCompSize += len - 2;
+    //     unCompressDmxBuf(data[1]);
+    //     break;
+    //     case 0x17: // KeyFrame compressed 1/3
+    //     memset(dmxCompBuf, 0, 600);
+    //     memcpy(dmxCompBuf, data + 2, len - 2);
+    //     dmxCompSize = len - 2;
+    //     break;
+    // case 0x18: // KeyFrame compressed 2/3
+    //     memcpy(dmxCompBuf + 230, data + 2, len - 2);
+    //     dmxCompSize += len - 2;
+    //     break;
+    // case 0x19: // KeyFrame compressed 3/3
+    //     memcpy(dmxCompBuf + 460, data + 2, len - 2);
+    //     dmxCompSize += len - 2;
+    //     unCompressDmxBuf(data[1]);
+    //     break;
     }
 
-    artnow_packet_t* packet = (artnow_packet_t*)data;// Daten in die Struktur artnow_packet_t kopieren
-    uint8_t universe = packet->universe;// Nachricht dekodieren
 
-    if(universe >= 0 && universe <=16){
-        Serial.println("data...");
-        if(packet->part == 0) Serial.println(packet->data[0]);
-    }else if(universe == SLAVE_CODE_REQUEST){
-        slaveRequest(macAddr, data, len);
-    }else if(universe == SLAVE_CODE_SET){
-        slaveReceiveSetter(macAddr, data, len);
-    }else{
-        Serial.println("unknown universe");
-    }
-    uint8_t sequence = packet->sequence;
-    uint8_t part = packet->part;
+
+
+    // artnow_packet_t* packet = (artnow_packet_t*)data;// Daten in die Struktur artnow_packet_t kopieren
+    // uint8_t universe = packet->universe;// Nachricht dekodieren
+
+    // if(universe >= 0 && universe <=16){
+    //     Serial.println("data...");
+    //     if(packet->part == 0) Serial.println(packet->data[0]);
+    // }else if(universe == SLAVE_CODE_REQUEST){
+    //     slaveRequest(macAddr, data, len);
+    // }else if(universe == SLAVE_CODE_SET){
+    //     slaveReceiveSetter(macAddr, data, len);
+    // }else{
+    //     Serial.println("unknown universe");
+    // }
+    // uint8_t sequence = packet->sequence;
+    // uint8_t part = packet->part;
     // Je nach Bedarf können hier weitere Aktionen hinzugefügt werden, z.B. DMX-Daten verarbeiten
 
     // // Beispiel: DMX-Daten ausgeben
@@ -120,20 +174,20 @@ void DMXnow::slaveDataReceived(const uint8_t* macAddr, const uint8_t* data, int 
 }
 
 
-void DMXnow::slaveRequest(const uint8_t* macAddr, const uint8_t* data, int len){
+void DMXnow::sl_responseRequest(const uint8_t* macAddr, const uint8_t* data, int len){
     Serial.printf("slave request from %02X.%02X.%02X.%02X.%02X.%02X... ",macAddr[0],macAddr[1],macAddr[2],macAddr[3],macAddr[4],macAddr[5]);
     // int _findPeer = findPeerByMac(macAddr);
     
-    // if(_findPeer == -1){    //new peer
+    // if(_findPeer == -1){    //new peer   //ToDo: obsolet??
     //     registerPeer(macAddr);
     //     sendSlaveresponse(macAddr);
     // }else(sendSlaveresponse(macAddr));   //known peer
 
     registerPeer(macAddr);
-    sendSlaveresponse(macAddr);
+    sl_sendResponse(macAddr);
 }
 
-void DMXnow::slaveReceiveSetter(const uint8_t* macAddr, const uint8_t* data, int len) {
+void DMXnow::sl_responseSetter(const uint8_t* macAddr, const uint8_t* data, int len) {
 
     // Serial.printf("setter from %02x:%02x:%02x:%02x:%02x:%02x: ", macAddr[0], macAddr[1], macAddr[2], macAddr[3], macAddr[4], macAddr[5]);
 
