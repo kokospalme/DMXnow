@@ -33,6 +33,8 @@ void DMXnow::initSlave(){
     } else {
         Serial.println("Failed to read MAC address");
     }
+
+    Serial.println("");
 }
 
 
@@ -44,6 +46,7 @@ void DMXnow::registerPeer(const uint8_t* macAddr){
     peerInfo.encrypt = false;
     peerInfo.ifidx = WIFI_IF_STA;
 
+    
     esp_err_t result = esp_now_add_peer(&peerInfo);
     if (result != ESP_OK) {
         Serial.print("error by register peer: ");

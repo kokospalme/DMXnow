@@ -11,7 +11,7 @@ SemaphoreHandle_t DMXnow::dmxMutex = NULL;
 void DMXnow::init() {
     dmxMutex = xSemaphoreCreateMutex();  // Create the mutex
     WiFi.mode(WIFI_STA);
-    Serial.println("Initialisiere DMXnow...");
+    Serial.println("initialize DMXnow [Master]");
     esp_now_init();
     
     
@@ -21,10 +21,10 @@ void DMXnow::init() {
     peerInfo.encrypt = false;
 
     if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-        Serial.println("Fehler beim Hinzufügen des broadcast-Peers");
+        Serial.println("error by adding broadcast-peer");
         return;
     }
-    Serial.println("broadcast-Peer hinzugefügt");
+    // Serial.println("broadcast-Peer added");
     esp_now_register_recv_cb(ma_dataReceived);
     esp_now_register_send_cb(ma_dataSent);
 
@@ -36,6 +36,7 @@ void DMXnow::init() {
                     baseMac[3], baseMac[4], baseMac[5]);
     } else {
         Serial.println("Failed to read MAC address");
+        return;
     }
     Serial.println("");
 }
@@ -214,7 +215,7 @@ receive Data from slave
 */
 void DMXnow::ma_dataReceived(const uint8_t *macAddr, const uint8_t *data, int len){
     // Sicherstellen, dass die Länge der empfangenen Daten korrekt ist
-    Serial.println("packet received...");
+    // Serial.println("packet received...");
 
     if (len < sizeof(artnow_slave_t)) {
         Serial.println("Received packet size mismatch");
@@ -223,7 +224,7 @@ void DMXnow::ma_dataReceived(const uint8_t *macAddr, const uint8_t *data, int le
     artnow_slave_t* packet = (artnow_slave_t*)data;  // put data to slave packet
     
     if(packet->responsecode == SLAVE_CODE_REQUEST){ //answer to slave request
-        Serial.printf("***** slave(%02X:%02X:%02X:%02X:%02X:%02X) *****\n",packet->macAddress[0],packet->macAddress[1],packet->macAddress[2],packet->macAddress[3],packet->macAddress[4],packet->macAddress[5]);
+        Serial.printf("***** slave(%02X:%02X:%02X:%02X:%02X:%02X) [%u.%u] ***** ",packet->macAddress[0],packet->macAddress[1],packet->macAddress[2],packet->macAddress[3],packet->macAddress[4],packet->macAddress[5], packet->universe, packet->dmxChannel);
         // Serial.printf("responsecode: %u\n",packet->responsecode);
         // Serial.printf("universe: %u\n",packet->universe);
         // Serial.printf("dmxStart: %u \n",packet->dmxChannel);
@@ -286,7 +287,7 @@ void DMXnow::deleteSlave(int index) {
 
 int DMXnow::findSlaveByMac(const uint8_t* macAddr) {
     int _arraysize = (int) slaveArray.size();
-    Serial.printf("size:%i\n",_arraysize);
+    // Serial.printf("size:%i\n",_arraysize);
     for (int i = 0; i < _arraysize; i++) {
         if (memcmp(slaveArray[i].macAddress, macAddr, 6) == 0) {
             // Serial.printf("peer gefunden: %i\n", i);
