@@ -83,7 +83,8 @@ void DMXnow::sl_sendResponse(const uint8_t* macMaster) {
     // Senden an Master
     Serial.printf("sending to broadcast");
     // esp_err_t result = esp_now_send(macMaster, (uint8_t *)&mySlaveData,  sizeof(artnow_slave_t));
-    esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&mySlaveData,  sizeof(artnow_slave_t));
+    uint8_t _data[4] = {1,2,3,4};
+    esp_err_t result = esp_now_send(broadcastAddress, _data,  sizeof(_data));
 
     if (result == ESP_OK) {
         Serial.println("Response sent to master");
