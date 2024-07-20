@@ -1,23 +1,3 @@
-/*
-Artnet2DMXnow_master example
-mySerialhandler.h
-
-This header file contains functions for handling and validating serial commands. It processes commands received via the serial interface to configure and control the slave devices.
-
-Key functionalities include:
-- **serialInterface():** Reads and processes serial commands. Supports commands for selecting a slave, setting the DMX universe and channel, and other configuration settings.
-- **isNumber():** Checks if a given string contains only numeric characters.
-- **getUint8_tFromMessage() and getIntFromMessage():** Extracts integer values from serial messages.
-- **getMacFromMessage():** Parses and validates a MAC address from a serial command message.
-- **isHexadecimal():** Validates if a string contains hexadecimal characters.
-
-This file is crucial for processing serial commands and interacting with slave devices.
-
-Licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0).
-To view a copy of this license, visit http://creativecommons.org/licenses/by/4.0/
-*/
-
-
 #ifndef MYSERIALHANDLER_H
 #define MYSERIALHANDLER_H
 
@@ -27,7 +7,7 @@ To view a copy of this license, visit http://creativecommons.org/licenses/by/4.0
 
 // Serial interface
 void serialInterface();
-bool validateMessage(String message, String prefix);    //ToDo: implement
+bool validateMessage(String message, String prefix);
 bool isNumber(String str);
 int getIntFromMessage(String message);
 int getUint8_tFromMessage(String message);

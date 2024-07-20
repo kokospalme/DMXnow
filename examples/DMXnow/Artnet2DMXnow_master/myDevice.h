@@ -1,22 +1,3 @@
-/*
-Artnet2DMXnow_master example
-myDevice.h
-
-This header file defines the hardware configuration and serial command handling for the project. It specifies the hardware pins and command prefixes used to communicate with slave devices over the serial interface.
-
-Key functionalities include:
-- **Hardware Pin Definitions:** Configures pins for the Ethernet connection and other hardware interfaces.
-- **Serial Commands:** Defines prefixes and parameters for serial commands used to control the device.
-
-Global variables:
-- **MAC Addresses:** Includes test MAC addresses and the broadcast address.
-
-This file is essential for configuring and managing hardware interfaces and serial communications.
-
-Licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0).
-To view a copy of this license, visit http://creativecommons.org/licenses/by/4.0/
-*/
-
 #ifndef MYDEVICE_H
 #define MYDEVICE_H
 #include <Arduino.h>
@@ -50,8 +31,10 @@ To view a copy of this license, visit http://creativecommons.org/licenses/by/4.0
 #define SLAVE_SETGET_RGB "scene.rgb3" // rgb3
 #define SLAVE_SETGET_RGB "scene.rgb4" // rgb4
 
+
+uint8_t macSlave1[] = {0x60, 0x55, 0xF9, 0x21, 0x9E, 0x14};  //!for testing only
 uint8_t broadcastAddress[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-uint8_t selectedSlave [] = {0,0,0,0,0,0};
+uint8_t selectedSlave [] = {0,0,0,0,0,0};//slave1 60:55:F9:21:9E:14
 
 #endif
 

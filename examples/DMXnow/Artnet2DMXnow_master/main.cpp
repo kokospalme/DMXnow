@@ -1,5 +1,4 @@
 /*
-Artnet2DMXnow_master example
 main.ino
 
 This sketch demonstrates the use of Artnet protocol in a master device to send DMX data to slave devices. It initializes the Artnet configuration and sets up the device to communicate over Ethernet.
@@ -20,8 +19,6 @@ To view a copy of this license, visit http://creativecommons.org/licenses/by/4.0
 #include "myDevice.h" //include device specific stuff
 #include "myArtnet.h"   //include artnet stuff
 
-void setupArtnet(); //setup artnet
-void sendDMX();
 
 void setup() {
     mutex = xSemaphoreCreateMutex();  // Create the mutex
@@ -30,26 +27,14 @@ void setup() {
     delay(2000);
     Serial.print("\nDMXnow [Master] booting... ");Serial.println(esp_reset_reason());
     DMXnow::init();
-    DMXnow::sendSlaveRequest();    
-    delay(1000);    //wait...
+    DMXnow::sendSlaveRequest();
+    delay(2000);
     setupArtnet();
-    delay(1000);
+    delay(100);
 }
 
 void loop() {
     serialInterface();
+    // sendDMX();
 }
 
-void setupArtnet(){
-    artnet_config.inputuniverse[0] = 1;
-    artnet_config.longname = "ESP32-C3 Artnet Node";
-    artnet_config.shortname = "ESP32C3 Artnode";
-    artnet_config.nodereport = "this is an Artnet Node from an ESP32-C3";
-
-    Serial.println("booting ArtnetNode...");
-    initEthernet(); //initialize ethernet connection
-
-    Artnet::setConfig(artnet_config);
-    Artnet::setArtDmxCallback(myArtDmxCallback);  
-    Artnet::begin(mac, ip);
-}
