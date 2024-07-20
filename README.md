@@ -5,8 +5,8 @@ A library for ESP32 and ESP32-C3 for sending DMX data from a Master device to sl
 * broadcast DMX data from master to slaves
 * request current universe, dmxchannel etc. from slaves
 * sending individual setters to slaves to set universe, dmxchannel and all kinds of stuff
-* [working example]() how to implement a master which receives artnet data over ethernet(with w5500 module), broadcasts it to the DMXnow environment, and has a serialHandler to change slaves dmxchannel etc. dynamic
-* [working example]() how to implement a slave with WS2812 LEDs, which can be controlled over DMXnow
+* [working example](https://github.com/kokospalme/DMXnow/tree/main/examples/DMXnow/Artnet2DMXnow_master) how to implement a master which receives artnet data over ethernet(with w5500 module), broadcasts it to the DMXnow environment, and has a serialHandler to change slaves dmxchannel etc. dynamic
+* [working example](https://github.com/kokospalme/DMXnow/tree/main/examples/DMXnow/rgbdevice) how to implement a slave with WS2812 LEDs, which can be controlled over DMXnow
 
 # libraries needed
 ```
