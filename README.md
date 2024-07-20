@@ -1,5 +1,26 @@
 # DMXnow
-a library for ESP32 and ESP32-C3 to send DMX data from one device to another.
+A library for ESP32 and ESP32-C3 for sending DMX data from a Master device to slave devices.
+
+# functionality
+* broadcast DMX data from master to slaves
+* request current universe, dmxchannel etc. from slaves
+* sending individual setters to slaves to set universe, dmxchannel and all kinds of stuff
+* [working example]() how to implement a master which receives artnet data over ethernet(with w5500 module), broadcasts it to the DMXnow environment, and has a serialHandler to change slaves dmxchannel etc. dynamic
+* [working example]() how to implement a slave with WS2812 LEDs, which can be controlled over DMXnow
+
+# libraries needed
+```
+lib_deps = 
+	https://github.com/kokospalme/ESP32-DMX.git
+    https://github.com/khoih-prog/AsyncUDP_ESP32_SC_Ethernet
+	https://github.com/kokospalme/Artnet
+    https://github.com/kokospalme/DMXnow
+```
+
+# ToDos
+* [ ] test with many slaves
+* [ ] test with full 4 universes
+* [x] test sending 1 universe
 
 # DMXnow environment
 ## registration process
@@ -10,15 +31,45 @@ sequenceDiagram
     participant Slave2
     participant Slave3
 
-    Master ->>+ Slave1: Broadcast: Who is there?
-    Master ->>+ Slave2: Broadcast: Who is there?
-    Master ->>+ Slave3: Broadcast: Who is there?
+    Master ->>+ Slave1: Broadcast to (FF:FF:FF:FF:FF): Who is there?
+    Master ->>+ Slave2: Broadcast to (FF:FF:FF:FF:FF): Who is there?
+    Master ->>+ Slave3: Broadcast to (FF:FF:FF:FF:FF): Who is there?
 
-    Slave1 -->>- Master: Response: I am Slave1 (MAC: 01:23:45:67:89:AB)
-    Slave2 -->>- Master: Response: I am Slave2 (MAC: 98:76:54:32:10:FF)
-    Slave3 -->>- Master: Response: I am Slave3 (MAC: AA:BB:CC:DD:EE:FF)
+    Slave1 -->>- Master: Response to (FF:FF:FF:FF:FF): I am Slave1 [MAC: 01:23:45:67:89:AB]
+    Slave2 -->>- Master: Response to (FF:FF:FF:FF:FF): I am Slave2 [MAC: 98:76:54:32:10:FF]
+    Slave3 -->>- Master: Response to (FF:FF:FF:FF:FF): I am Slave3 [MAC: AA:BB:CC:DD:EE:FF]
 
     Note right of Master: The master now knows all slaves' MAC address in the network.
+```
+
+## setter
+```mermaid
+sequenceDiagram
+    participant main.cpp
+    participant Master
+    participant Slave1
+    participant Slave2
+
+    
+    main.cpp ->> Master: sendSlaveSetter([01:23:45:67:89:AB], "set.slave.dmxchannel", "12")
+    Master ->>+ Slave1: sending setter to (01:23:45:67:89:AB): [slave.dmxchannel:12]
+    main.cpp ->> Master: sendSlaveSetter([98:76:54:32:10:FF], "set.slave.universe", "3")
+    Master ->>+ Slave2: sending setter to (98:76:54:32:10:FF): [slave.universe:3]
+    Note right of Master: no acknowledge from slaves (so far)
+    Note right of Slave2: known commands "slave.universe" and "slave.dmxchannel"
+```
+
+## dmx data
+```mermaid
+sequenceDiagram
+    participant Master
+    participant Slave1
+    participant Slave2
+    participant Slave3
+
+    Master ->>+ Slave1: Broadcast to (FF:FF:FF:FF:FF): [dmxdata]
+    Master ->>+ Slave2: Broadcast to (FF:FF:FF:FF:FF): [dmxdata]
+    Master ->>+ Slave3: Broadcast to (FF:FF:FF:FF:FF): [dmxdata]
 ```
 
 slave's struct:
