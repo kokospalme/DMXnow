@@ -12,9 +12,9 @@ A library for ESP32 and ESP32-C3 for sending DMX data from a Master device to sl
 ```
 lib_deps = 
 	https://github.com/kokospalme/ESP32-DMX.git
-    https://github.com/khoih-prog/AsyncUDP_ESP32_SC_Ethernet
+	https://github.com/khoih-prog/AsyncUDP_ESP32_SC_Ethernet
 	https://github.com/kokospalme/Artnet
-    https://github.com/kokospalme/DMXnow
+	https://github.com/kokospalme/DMXnow
 ```
 
 # ToDos
