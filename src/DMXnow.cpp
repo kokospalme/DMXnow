@@ -84,8 +84,9 @@ void DMXnow::sendQueueElement(uint8_t universe, bool compressed, uint8_t sequenc
             sendQueue[i].size = 173;
             sendQueue[i].data[0] = _keyframe; // uncompressed keyframe, part 1/3
             sendQueue[i].data[1] = universe;
+            
             // sendQueue[i].data[2] = sequence; //todo: schauen ob sequence noch rein passt
-            memcpy(sendQueue[i].data + SEND_QUEUE_OVERHEAD, dmxBuf[universe], 171);
+            memcpy(sendQueue[i].data + SEND_QUEUE_OVERHEAD, dmxBuf[universe - 1], 171);
             break;
             }
         }
@@ -99,7 +100,7 @@ void DMXnow::sendQueueElement(uint8_t universe, bool compressed, uint8_t sequenc
             sendQueue[i].data[0] = _keyframe + 1; // uncompressed keyframe, part 2/3
             sendQueue[i].data[1] = universe;
             // sendQueue[i].data[2] = sequence;
-            memcpy(sendQueue[i].data + SEND_QUEUE_OVERHEAD, dmxBuf[universe] + 171, 171);
+            memcpy(sendQueue[i].data + SEND_QUEUE_OVERHEAD, dmxBuf[universe - 1] + 171, 171);
             break;
             }
         }
@@ -113,7 +114,7 @@ void DMXnow::sendQueueElement(uint8_t universe, bool compressed, uint8_t sequenc
             sendQueue[i].data[0] = _keyframe +SEND_QUEUE_OVERHEAD; // uncompressed keyframe, part 3/3
             sendQueue[i].data[1] = universe;
             // sendQueue[i].data[2] = sequence;
-            memcpy(sendQueue[i].data + SEND_QUEUE_OVERHEAD, dmxBuf[universe] + 342, 170);
+            memcpy(sendQueue[i].data + SEND_QUEUE_OVERHEAD, dmxBuf[universe - 1] + 342, 170);
             break;
             }
         }
