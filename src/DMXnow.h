@@ -56,6 +56,7 @@ typedef struct {
     uint8_t universe = 1;       //slave's universe from 0 ...16
     uint16_t dmxChannel = 1;      //slave's sartaddress, starting at 1
     uint16_t dmxCount = 3;      //number of dmxchannels used
+    char slavename[15] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 } __attribute__((packed)) artnow_slave_t;
 
@@ -112,6 +113,7 @@ private:
     static uint8_t dmxBuf[DMX_UNIVERSES][512];// Stores the latest values of all universes
     static uint8_t dmxPrevBuf[DMX_UNIVERSES][512];// Stores the previous values of all universes for diff calculation
     static SemaphoreHandle_t dmxMutex;
+    static bool isInitialized;
 };
 
 #endif // DMXNOW_H

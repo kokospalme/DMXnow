@@ -7,6 +7,7 @@ void (*DMXnow::dmxCallback)(uint8_t* data);  //dmx callback
 
 
 void DMXnow::initSlave(){
+    if(isInitialized) return;  //return if already initialized
     dmxMutex = xSemaphoreCreateMutex();  // Create the mutex
 
     WiFi.mode(WIFI_STA);
@@ -28,7 +29,7 @@ void DMXnow::initSlave(){
 
     Serial.println("");
 
-
+    isInitialized = true;
 }
 
 void DMXnow::setSlaveconfig(artnow_slave_t config){
@@ -70,9 +71,7 @@ void DMXnow::deletePeer(const uint8_t* macAddr) {
 // Funktion zum Senden der Antwort an den Master
 void DMXnow::sl_responseRequest(const uint8_t* macMaster) {
     esp_read_mac(mySlaveData.macAddress, ESP_MAC_WIFI_STA);
-    mySlaveData.rssi = WiFi.RSSI();
     mySlaveData.responsecode = SLAVE_CODE_REQUEST;
-
     esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&mySlaveData,  sizeof(artnow_slave_t)); //send to master
 
     if (result == ESP_OK) {

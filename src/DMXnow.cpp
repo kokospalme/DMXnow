@@ -7,8 +7,10 @@ SendQueueElem DMXnow::sendQueue[SEND_QUEUE_SIZE];
 uint8_t DMXnow::dmxBuf[DMX_UNIVERSES][512];
 uint8_t DMXnow::dmxPrevBuf[DMX_UNIVERSES][512];
 SemaphoreHandle_t DMXnow::dmxMutex = NULL;
+bool DMXnow::isInitialized = false;
 
 void DMXnow::init() {
+    if(isInitialized) return;  //return if already initialized
     dmxMutex = xSemaphoreCreateMutex();  // Create the mutex
     WiFi.mode(WIFI_STA);
     // Serial.println("initialize DMXnow [Master]");
@@ -41,6 +43,7 @@ void DMXnow::init() {
         return;
     }
     Serial.println("");
+    isInitialized = true;
 }
 
 void DMXnow::pushDMXData(uint8_t universe, uint16_t length, uint8_t sequence, uint8_t* data, bool send) { //ToDO: daten komprimieren
@@ -242,7 +245,7 @@ void DMXnow::ma_dataReceived(const uint8_t *macAddr, const uint8_t *data, int le
     artnow_slave_t* packet = (artnow_slave_t*)data;  // put data to slave packet
     
     if(packet->responsecode == SLAVE_CODE_REQUEST){ //answer to slave request
-        Serial.printf("***** slave(%02X:%02X:%02X:%02X:%02X:%02X) [%u.%u] ***** ",packet->macAddress[0],packet->macAddress[1],packet->macAddress[2],packet->macAddress[3],packet->macAddress[4],packet->macAddress[5], packet->universe, packet->dmxChannel);
+        Serial.printf("***** slave (%02X:%02X:%02X:%02X:%02X:%02X) [%u.%u] ***** ",packet->macAddress[0],packet->macAddress[1],packet->macAddress[2],packet->macAddress[3],packet->macAddress[4],packet->macAddress[5], packet->universe, packet->dmxChannel);
         // Serial.printf("responsecode: %u\n",packet->responsecode);
         // Serial.printf("universe: %u\n",packet->universe);
         // Serial.printf("dmxStart: %u \n",packet->dmxChannel);
