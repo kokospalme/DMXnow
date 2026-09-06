@@ -45,7 +45,7 @@ struct deviceconfig_t{
     uint8_t input = DMXIO_USB;
     uint8_t output = DMXIO_DMXNOW;
     int artnetUniverses[4] = {1,2,3,4};   //universes to listen to, -1= not listening
-    artnow_slave_t dmxNowSlaveConfig;
+    dmxnow_slave_t dmxNowSlaveConfig;
 }deviceconfig;
 
 Preferences prefs;  //preferences to save config in

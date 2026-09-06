@@ -1,13 +1,15 @@
 #include "DMXnow.h"
 
 uint8_t DMXnow::broadcastAddress[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-artnow_packet_t DMXnow::packet;
-std::vector<artnow_slave_t> DMXnow::slaveArray;
+uint16_t DMXnow::dmxnowTxSequence[DMX_UNIVERSES] = {0};
+uint16_t DMXnow::dmxnowCtlSequence = 0;
+std::vector<dmxnow_slave_t> DMXnow::slaveArray;
 SendQueueElem DMXnow::sendQueue[SEND_QUEUE_SIZE];
-uint8_t DMXnow::dmxBuf[DMX_UNIVERSES][512];
-uint8_t DMXnow::dmxPrevBuf[DMX_UNIVERSES][512];
+uint8_t DMXnow::dmxBuf[DMX_UNIVERSES][DMX_BUFSIZE];
 SemaphoreHandle_t DMXnow::dmxMutex = NULL;
 bool DMXnow::isInitialized = false;
+void (*DMXnow::discoveryCallback)(const dmxnow_slave_t& slave) = nullptr;
+void (*DMXnow::getterResponseCallback)(const uint8_t* macAddr, String name, String value) = nullptr;
 
 void DMXnow::init() {
     if(isInitialized) return;  //return if already initialized
@@ -15,18 +17,7 @@ void DMXnow::init() {
     WiFi.mode(WIFI_STA);
     // Serial.println("initialize DMXnow [Master]");
     esp_now_init();
-    
-    
-    // esp_now_peer_info_t peerInfo;    //ToDo: obsolet?
-    // memcpy(peerInfo.peer_addr, broadcastAddress, 6);
-    // peerInfo.channel = 0;
-    // peerInfo.encrypt = false;
 
-    // if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-    //     Serial.println("error by adding broadcast-peer");
-    //     return;
-    // }
-    // Serial.println("broadcast-Peer added");
     registerPeer(broadcastAddress);
 
     esp_now_register_recv_cb(ma_dataReceived);
@@ -46,247 +37,235 @@ void DMXnow::init() {
     isInitialized = true;
 }
 
-void DMXnow::pushDMXData(uint8_t universe, uint16_t length, uint8_t sequence, uint8_t* data, bool send) { //ToDO: daten komprimieren
-    if(length < 512){
+void DMXnow::pushDMXData(uint8_t universe, uint16_t length, uint8_t sequence, uint8_t* data, bool send) {
+    if(length < DMX_BUFSIZE){
         Serial.println("only full universes for now. party not fully implemented");
         return;
     }
-    if(universe < 1 || universe > 4){
-        Serial.println("only universe 1...4 are implemented for now.");
+    if(universe < 1 || universe > DMX_UNIVERSES){
+        Serial.printf("only universe 1...%u are implemented for now.\n", DMX_UNIVERSES);
         return;
     }
 
-
-    if (xSemaphoreTake(dmxMutex, portMAX_DELAY) == pdTRUE) {    //put DMX data to buffer
-        memcpy(dmxPrevBuf[universe-1], dmxBuf[universe-1], 512);// Copy the current frame to the previous frame data
-        memcpy(dmxBuf[universe-1], data, 512);// Copy the new data to the current frame
+    if (xSemaphoreTake(dmxMutex, portMAX_DELAY) == pdTRUE) {
+        memcpy(dmxBuf[universe-1], data, DMX_BUFSIZE);
         xSemaphoreGive(dmxMutex);
-        delay(2);
     }
+
     if(send){
-        sendQueueElement(universe, false, sequence);    //send if true
+        dmxnow_dmxdata_t pkt;
+        pkt.hdr.type = DMXNOW_TYPE_DMXDATA;
+        pkt.hdr.sequence = dmxnowTxSequence[universe-1]++;
+        pkt.hdr.flags = DMXNOW_FLAG_NEW;
+        pkt.universe = universe;
+        pkt.offset = 0;
+        pkt.length = DMX_BUFSIZE_WITH_STARTCODE;
+        pkt.payload[0] = 0; // DMX start code
+        memcpy(&pkt.payload[1], data, DMX_BUFSIZE);
+
+        // one single ESP-NOW v2 packet carries the whole universe - no more fragmenting into parts
+        enqueueSend(broadcastAddress, (uint8_t*) &pkt, sizeof(pkt));
         processNextSend();
     }
-
-
 }
 
-// from Github
-void DMXnow::sendQueueElement(uint8_t universe, bool compressed, uint8_t sequence){
-    // Serial.print("send...");
-   
-    if (xSemaphoreTake(dmxMutex, portMAX_DELAY) == pdTRUE) {
-    // uncompressed, raw frame
-        // First part
-        uint8_t _keyframe = KEYYFRAME_CODE_UNCOMPRESSED;
-        for (int i = 0; i < SEND_QUEUE_SIZE; i++) {
-            if (!sendQueue[i].toBeSent) {
-            // This element is free to be filled
-            memcpy(sendQueue[i].macAddr, broadcastAddress, 6);
-            sendQueue[i].toBeSent = 1;
-            sendQueue[i].size = 173;
-            sendQueue[i].data[0] = _keyframe; // uncompressed keyframe, part 1/3
-            sendQueue[i].data[1] = universe;
-            
-            // sendQueue[i].data[2] = sequence; //todo: schauen ob sequence noch rein passt
-            memcpy(sendQueue[i].data + SEND_QUEUE_OVERHEAD, dmxBuf[universe - 1], 171);
-            break;
-            }
-        }
-        // Second part
-        for (int i = 0; i < SEND_QUEUE_SIZE; i++) {
-            if (!sendQueue[i].toBeSent) {
-            // This element is free to be filled
-            memcpy(sendQueue[i].macAddr, broadcastAddress, 6);
-            sendQueue[i].toBeSent = 1;
-            sendQueue[i].size = 173;
-            sendQueue[i].data[0] = _keyframe + 1; // uncompressed keyframe, part 2/3
-            sendQueue[i].data[1] = universe;
-            // sendQueue[i].data[2] = sequence;
-            memcpy(sendQueue[i].data + SEND_QUEUE_OVERHEAD, dmxBuf[universe - 1] + 171, 171);
-            break;
-            }
-        }
-        // Third part
-        for (int i = 0; i < SEND_QUEUE_SIZE; i++) {
-            if (!sendQueue[i].toBeSent) {
-            // This element is free to be filled
-            memcpy(sendQueue[i].macAddr, broadcastAddress, 6);
-            sendQueue[i].toBeSent = 1;
-            sendQueue[i].size = 172;
-            sendQueue[i].data[0] = _keyframe +SEND_QUEUE_OVERHEAD; // uncompressed keyframe, part 3/3
-            sendQueue[i].data[1] = universe;
-            // sendQueue[i].data[2] = sequence;
-            memcpy(sendQueue[i].data + SEND_QUEUE_OVERHEAD, dmxBuf[universe - 1] + 342, 170);
-            break;
-            }
-        }
-
-        xSemaphoreGive(dmxMutex);  //give mutex
-        delay(2);   //time to breathe
+void DMXnow::enqueueSend(const uint8_t* macAddr, const uint8_t* data, uint16_t size) {
+    if (size > DMXNOW_MAX_PACKET_SIZE) {
+        Serial.printf("DMXnow: packet too large (%u > %u), dropped.\n", size, DMXNOW_MAX_PACKET_SIZE);
+        return;
     }
-
+    if (xSemaphoreTake(dmxMutex, portMAX_DELAY) == pdTRUE) {
+        bool queued = false;
+        for (int i = 0; i < SEND_QUEUE_SIZE; i++) {
+            if (!sendQueue[i].toBeSent) {
+                memcpy(sendQueue[i].macAddr, macAddr, 6);
+                sendQueue[i].size = size;
+                memcpy(sendQueue[i].data, data, size);
+                sendQueue[i].toBeSent = 1;
+                queued = true;
+                break;
+            }
+        }
+        if (!queued) {
+            Serial.println("DMXnow: send queue is full, packet dropped.");
+        }
+        xSemaphoreGive(dmxMutex);
+    }
 }
-
-// from github
 
 void DMXnow::processNextSend() {
-
-    if (xSemaphoreTake(dmxMutex, portMAX_DELAY) == pdTRUE) {    //take mutex
-        for (int i = 0; i < SEND_QUEUE_SIZE; i++) {// Iterate through the sendQueue and trigger the first match
-            // Serial.printf("looking on pos %i \n", i);
+    if (xSemaphoreTake(dmxMutex, portMAX_DELAY) == pdTRUE) {
+        for (int i = 0; i < SEND_QUEUE_SIZE; i++) {
             if (sendQueue[i].toBeSent) {
-            //    Serial.printf("sent to mac: %02X:%02X:%02X:%02X:%02X:%02X\n",
-            //         sendQueue[i].macAddr[0], sendQueue[i].macAddr[1], sendQueue[i].macAddr[2],
-            //         sendQueue[i].macAddr[3], sendQueue[i].macAddr[4], sendQueue[i].macAddr[5]);
-                // Serial.println("found.");
                 esp_now_send(sendQueue[i].macAddr, sendQueue[i].data, sendQueue[i].size);
-                // Serial.println("sent.");
-                bool isBroadcast = true;
-                for(int j = 0; j < 6; j++){
-                    if(sendQueue[i].macAddr[j] != broadcastAddress[j])isBroadcast = false;
-                }
-                if(!isBroadcast)deletePeer(sendQueue[i].macAddr);
-                
-                memset(&(sendQueue[i]), 0, sizeof(SendQueueElem));// Zero that element so it won't be sent again
-                xSemaphoreGive(dmxMutex);  //give mutex
-                delay(1);   //breathe
-                return; // Stop here. Next packet send will be triggered in the send-callback-function
+
+                bool isBroadcast = (memcmp(sendQueue[i].macAddr, broadcastAddress, 6) == 0);
+                if (!isBroadcast) deletePeer(sendQueue[i].macAddr);
+
+                memset(&(sendQueue[i]), 0, sizeof(SendQueueElem));
+                xSemaphoreGive(dmxMutex);
+                return; // next packet is triggered from the send-callback
             }
         }
     }
-    // If control flow reaches here, the send queue has been emptied
-    xSemaphoreGive(dmxMutex);  //give mutex
-    delay(1);
+    xSemaphoreGive(dmxMutex);
 }
 
-
 /*
-send slave request
-slaves are answering their info
+broadcast a discovery request; every slave that hears it answers describing its active mode
 */
 void DMXnow::sendSlaveRequest() {
-    if (xSemaphoreTake(dmxMutex, portMAX_DELAY) == pdTRUE) {
-        if (!sendQueue[SEND_QUEUE_SIZE - 1].toBeSent) {
-            // This element is free to be filled
-            memcpy(sendQueue[SEND_QUEUE_SIZE - 1].macAddr, broadcastAddress, 6);
-            sendQueue[SEND_QUEUE_SIZE - 1].toBeSent = 1;
-            sendQueue[SEND_QUEUE_SIZE - 1].size = SEND_QUEUE_OVERHEAD;
-            sendQueue[SEND_QUEUE_SIZE - 1].data[0] = KEYYFRAME_CODE_UNCOMPRESSED; // uncompressed keyframe
-            sendQueue[SEND_QUEUE_SIZE - 1].data[1] = SLAVE_CODE_REQUEST;
-            // Serial.printf("send slave request on pos%u ...\n", SEND_QUEUE_SIZE - 1);
-        }else{
-            Serial.println("queue is busy");
-        }
-        xSemaphoreGive(dmxMutex);  //give mutex
-        delay(1); 
+    dmxnow_discovery_request_t pkt;
+    pkt.hdr.type = DMXNOW_TYPE_DISCOVERY_REQUEST;
+    pkt.hdr.sequence = dmxnowCtlSequence++;
+    pkt.mode = DMXNOW_MODE_CURRENT;
+    enqueueSend(broadcastAddress, (uint8_t*) &pkt, sizeof(pkt));
+    processNextSend();
+}
+
+/*
+ask one already-known slave to describe a specific mode (0..modeCount-1), without switching its
+live mode - lets the master build a full per-device/per-mode profile after an initial discovery.
+*/
+void DMXnow::sendSlaveModeRequest(const uint8_t *macAddr, uint8_t mode) {
+    int _slave = findSlaveByMac(macAddr);
+    if (_slave < 0) {
+        Serial.println("no slave found.");
+        return;
     }
+
+    registerPeer(macAddr);
+
+    dmxnow_discovery_request_t pkt;
+    pkt.hdr.type = DMXNOW_TYPE_DISCOVERY_REQUEST;
+    pkt.hdr.sequence = dmxnowCtlSequence++;
+    pkt.mode = mode;
+    enqueueSend(macAddr, (uint8_t*) &pkt, sizeof(pkt));
     processNextSend();
 }
 
 void DMXnow::sendSlaveSetter(const uint8_t *macAddr, String name, String value) {
-    int _slave = findSlaveByMac(macAddr); // find slave
-    if (_slave < 0) { // return if slave is unknown
+    int _slave = findSlaveByMac(macAddr);
+    if (_slave < 0) {
         Serial.println("no slave found.");
         return;
     }
-    registerPeer(macAddr); // register peer
-
-    if (name.length() > SETTTER_NAME_LENGTH) { // name length of setter
+    if (name.length() >= SETTER_NAME_LENGTH) {
         Serial.println("setter name too long");
         return;
     }
-    if (value.length() > SETTER_VALUE_LENGTH) { // value length of setter
+    if (value.length() >= SETTER_VALUE_LENGTH) {
         Serial.println("value too long");
         return;
     }
 
-    // buffer
-    String bufString = name;
-    bufString += ":";
-    bufString += value;
+    registerPeer(macAddr);
 
-    char charArray[bufString.length() + 1]; // +1 for the null terminator
-    bufString.toCharArray(charArray, sizeof(charArray));
+    dmxnow_setter_t pkt;
+    pkt.hdr.type = DMXNOW_TYPE_SETTER;
+    pkt.hdr.sequence = dmxnowCtlSequence++;
+    name.toCharArray(pkt.name, sizeof(pkt.name));
+    value.toCharArray(pkt.value, sizeof(pkt.value));
 
-    if (xSemaphoreTake(dmxMutex, portMAX_DELAY) == pdTRUE) {
-        if (!sendQueue[SEND_QUEUE_SIZE - 1].toBeSent) {
-            // This element is free to be filled
-            memcpy(sendQueue[SEND_QUEUE_SIZE - 1].macAddr, macAddr, 6);
-            sendQueue[SEND_QUEUE_SIZE - 1].toBeSent = 1;
-            sendQueue[SEND_QUEUE_SIZE - 1].size = SEND_QUEUE_OVERHEAD + bufString.length() + 1; // include payload size and null terminator
-            sendQueue[SEND_QUEUE_SIZE - 1].data[0] = KEYYFRAME_CODE_UNCOMPRESSED; // uncompressed keyframe
-            sendQueue[SEND_QUEUE_SIZE - 1].data[1] = SLAVE_CODE_SET;
-            memcpy(sendQueue[SEND_QUEUE_SIZE - 1].data + SEND_QUEUE_OVERHEAD, charArray, bufString.length() + 1); // char array to buffer
-
-            // Serial.printf("send slave request on pos%u ...\n", SEND_QUEUE_SIZE - 1);
-        } else {
-            Serial.println("queue is busy");
-        }
-        xSemaphoreGive(dmxMutex); // give mutex
-        delay(1);
-    }
+    enqueueSend(macAddr, (uint8_t*) &pkt, sizeof(pkt));
     processNextSend();
 }
 
-
-
-/*
-receive Data from slave
-*/
-void DMXnow::ma_dataReceived(const uint8_t *macAddr, const uint8_t *data, int len){
-    // Sicherstellen, dass die Länge der empfangenen Daten korrekt ist
-    // Serial.println("packet received...");
-
-    if (len < sizeof(artnow_slave_t)) {
-        Serial.println("Received packet size mismatch");
+void DMXnow::sendSlaveGetter(const uint8_t *macAddr, String name) {
+    int _slave = findSlaveByMac(macAddr);
+    if (_slave < 0) {
+        Serial.println("no slave found.");
         return;
     }
-    artnow_slave_t* packet = (artnow_slave_t*)data;  // put data to slave packet
-    
-    if(packet->responsecode == SLAVE_CODE_REQUEST){ //answer to slave request
-        Serial.printf("***** slave (%02X:%02X:%02X:%02X:%02X:%02X) [%u.%u] ***** ",packet->macAddress[0],packet->macAddress[1],packet->macAddress[2],packet->macAddress[3],packet->macAddress[4],packet->macAddress[5], packet->universe, packet->dmxChannel);
-        // Serial.printf("responsecode: %u\n",packet->responsecode);
-        // Serial.printf("universe: %u\n",packet->universe);
-        // Serial.printf("dmxStart: %u \n",packet->dmxChannel);
-        // Serial.printf("dmxCount: %u\n",packet->dmxCount);
-        // Serial.printf("MAC:%02X:%02X:%02X:%02X:%02X:%02X\n",packet->macAddress[0],packet->macAddress[1],packet->macAddress[2],packet->macAddress[3], packet->macAddress[4],packet->macAddress[5]);
-        // Serial.printf("rssi: %i dB\n",packet->rssi);
-        
-        int _slave = findSlaveByMac(packet->macAddress);
-        if( _slave == -1){   //unknown slave
-            addSlave(*packet);
-            Serial.println("slave added.");
-        }else{  //known slave
-            slaveArray[_slave] = *packet;   //overwrite slave
-            Serial.println("known slave overwritten.");
-        }
-        //ToDo: callback slave response
-        Serial.println("");
-    }else if(packet->responsecode == SLAVE_CODE_SET){
-        //got setter
-    }else if(packet->responsecode == SLAVE_CODE_GET){
-        //got getter
-    }else{
-        Serial.println("unknown responsecode.\n");
+    if (name.length() >= SETTER_NAME_LENGTH) {
+        Serial.println("getter name too long");
         return;
+    }
+
+    registerPeer(macAddr);
+
+    dmxnow_getter_t pkt;
+    pkt.hdr.type = DMXNOW_TYPE_GETTER;
+    pkt.hdr.sequence = dmxnowCtlSequence++;
+    name.toCharArray(pkt.name, sizeof(pkt.name));
+
+    enqueueSend(macAddr, (uint8_t*) &pkt, sizeof(pkt));
+    processNextSend();
+}
+
+void DMXnow::setDiscoveryCallback(void (*fptr)(const dmxnow_slave_t& slave)) {
+    discoveryCallback = fptr;
+}
+
+void DMXnow::setGetterResponseCallback(void (*fptr)(const uint8_t* macAddr, String name, String value)) {
+    getterResponseCallback = fptr;
+}
+
+int DMXnow::getSlaveCount() {
+    return (int) slaveArray.size();
+}
+
+const dmxnow_slave_t* DMXnow::getSlave(int index) {
+    if (index < 0 || index >= (int) slaveArray.size()) return nullptr;
+    return &slaveArray[index];
+}
+
+const dmxnow_slave_t* DMXnow::getSlaveByMac(const uint8_t* macAddr) {
+    int _slave = findSlaveByMac(macAddr);
+    if (_slave < 0) return nullptr;
+    return &slaveArray[_slave];
+}
+
+/*
+receive data from a slave (discovery response or getter response)
+*/
+void DMXnow::ma_dataReceived(const esp_now_recv_info_t* info, const uint8_t *data, int len) {
+    if (len < (int) sizeof(dmxnow_header_t)) {
+        return;
+    }
+    const dmxnow_header_t* hdr = (const dmxnow_header_t*) data;
+    if (hdr->magic != DMXNOW_MAGIC || hdr->version != DMXNOW_PROTOCOL_VERSION) {
+        return; // not a (compatible) DMXnow packet, ignore
+    }
+
+    switch (hdr->type) {
+        case DMXNOW_TYPE_DISCOVERY_RESPONSE: {
+            if (len < (int) sizeof(dmxnow_discovery_response_t)) {
+                Serial.println("discovery response: packet size mismatch");
+                return;
+            }
+            const dmxnow_discovery_response_t* response = (const dmxnow_discovery_response_t*) data;
+            int8_t rssi = (info && info->rx_ctrl) ? info->rx_ctrl->rssi : 0;
+            addSlave(response, rssi);
+            break;
+        }
+
+        case DMXNOW_TYPE_GETTER_RESPONSE: {
+            if (len < (int) sizeof(dmxnow_getter_response_t)) {
+                Serial.println("getter response: packet size mismatch");
+                return;
+            }
+            const dmxnow_getter_response_t* response = (const dmxnow_getter_response_t*) data;
+            if (getterResponseCallback) {
+                getterResponseCallback(info->src_addr, String(response->name), String(response->value));
+            }
+            break;
+        }
+
+        default:
+            // masters don't expect any other packet type from a slave
+            break;
     }
 }
 
-void DMXnow::ma_dataSent(const uint8_t* mac, esp_now_send_status_t sendStatus) {
+void DMXnow::ma_dataSent(const esp_now_send_info_t* tx_info, esp_now_send_status_t sendStatus) {
   switch (sendStatus)
   {
     case ESP_NOW_SEND_SUCCESS:
-      // Send the next packet
-    //   memset((void*)line4.c_str(), 0, 25);
-    //   sprintf((char*)line4.c_str(), "SEND_SUCCESS");
       processNextSend();
       break;
 
     case ESP_NOW_SEND_FAIL:
-      // Empty the sendQueue
-    //   memset((void*)line4.c_str(), 0, 25);
-    //   sprintf((char*)line4.c_str(), "SEND_FAIL");
       memset(sendQueue, 0, SEND_QUEUE_SIZE*sizeof(SendQueueElem));
       break;
 
@@ -295,24 +274,67 @@ void DMXnow::ma_dataSent(const uint8_t* mac, esp_now_send_status_t sendStatus) {
   }
 }
 
+void DMXnow::addSlave(const dmxnow_discovery_response_t* response, int8_t rssi) {
+    if (response->mode >= DMXNOW_MAX_MODES) {
+        Serial.printf("DMXnow: discovery response for mode %u exceeds DMXNOW_MAX_MODES (%u), ignored.\n", response->mode, DMXNOW_MAX_MODES);
+        return;
+    }
 
-void DMXnow::addSlave(artnow_slave_t entry) {
-    slaveArray.push_back(entry);
+    // a response only ever describes ONE mode - merge it into the slave's record instead of
+    // replacing it wholesale, so modes learned earlier (via sendSlaveModeRequest) aren't lost.
+    int _slave = findSlaveByMac(response->macAddress);
+    if (_slave == -1) {
+        dmxnow_slave_t entry;
+        memcpy(entry.macAddress, response->macAddress, 6);
+        slaveArray.push_back(entry);
+        _slave = (int) slaveArray.size() - 1;
+        Serial.println("slave added.");
+    } else {
+        Serial.println("known slave updated.");
+    }
+
+    dmxnow_slave_t& entry = slaveArray[_slave];
+    entry.wifiChannel = response->wifiChannel;
+    entry.rssi = rssi;
+    entry.universe = response->universe;
+    entry.dmxChannel = response->dmxChannel;
+    memcpy(entry.slavename, response->slavename, sizeof(entry.slavename));
+    entry.activeMode = response->activeMode;
+    entry.modeCount = response->modeCount;
+    entry.lastSeenMillis = millis();
+
+    // settings are mode-independent - every response carries the full current list
+    entry.settingCount = response->settingCount;
+    memcpy(entry.settings, response->settings, sizeof(entry.settings));
+
+    dmxnow_mode_info_t& modeInfo = entry.modes[response->mode];
+    modeInfo.known = true;
+    memcpy(modeInfo.modeName, response->modeName, sizeof(modeInfo.modeName));
+    modeInfo.dmxCount = response->dmxCount;
+    modeInfo.channelCount = response->channelCount;
+    memcpy(modeInfo.channels, response->channels, sizeof(modeInfo.channels));
+
+    Serial.printf("***** slave (%02X:%02X:%02X:%02X:%02X:%02X) [universe %u, ch %u..%u] mode %u/%u '%s' (%u functions) *****\n",
+        entry.macAddress[0], entry.macAddress[1], entry.macAddress[2], entry.macAddress[3], entry.macAddress[4], entry.macAddress[5],
+        entry.universe, entry.dmxChannel, entry.dmxChannel + modeInfo.dmxCount - 1,
+        response->mode, entry.modeCount, modeInfo.modeName, modeInfo.channelCount);
+
+    if (discoveryCallback) {
+        discoveryCallback(entry);
+    }
 }
 
 void DMXnow::deleteSlave(int index) {
-    if (index >= 0 && index < slaveArray.size()) {
+    if (index >= 0 && index < (int) slaveArray.size()) {
         slaveArray.erase(slaveArray.begin() + index);
     }
 }
 
 int DMXnow::findSlaveByMac(const uint8_t* macAddr) {
     int _arraysize = (int) slaveArray.size();
-    // Serial.printf("size:%i\n",_arraysize);
     for (int i = 0; i < _arraysize; i++) {
         if (memcmp(slaveArray[i].macAddress, macAddr, 6) == 0) {
-            // Serial.printf("peer gefunden: %i\n", i);
-            return i; // Peer gefunden
+            return i;
         }
     }
     return -1;

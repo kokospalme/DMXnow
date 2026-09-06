@@ -48,7 +48,7 @@ struct myConfig_t{  //individual config of slave device
   uint8_t rgb[3] = {100, 0, 0}; //rgb values
 }config;
 Preferences prefs;  //preferences to save config in
-artnow_slave_t dmxnowCfg;
+dmxnow_slave_t dmxnowCfg;
 
 void getConfig(); //gets config from memory
 void setterCallback(const uint8_t* macAddr, String name, String value); //callback function when a setter is received (tp change dmx channel, universe etc.)
@@ -97,7 +97,18 @@ void getConfig(){
 
   dmxnowCfg.universe = config.universe;
   dmxnowCfg.dmxChannel = config.dmxchannel;
-  dmxnowCfg.dmxCount = CHANNELCOUNT;
+
+  // this device only has one mode: a dimmer followed by an RGB triplet
+  dmxnow_channel_t channels[2];
+  channels[0] = dmxnow_channel_t();
+  channels[0].offset = 0;
+  channels[0].type = DMXNOW_FN_DIMMER;
+  channels[0].bits = DMXNOW_BITS_8;
+  channels[1] = dmxnow_channel_t();
+  channels[1].offset = 1;
+  channels[1].type = DMXNOW_FN_RGB;
+  channels[1].bits = DMXNOW_BITS_8;
+  DMXnow::setSlaveChannels(0, "default", CHANNELCOUNT, channels, 2);
 
   FastLED.setBrightness(config.brightness); //set "panic mode", so it's not dark when no data is received
   for(int i = 0; i < NUM_PIXELS; i ++){
