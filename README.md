@@ -278,7 +278,7 @@ sequenceDiagram
 * Protocol v2's core idea - carrying an entire DMX universe in a single ESP-NOW 2.0 packet instead
   of fragmenting it, and negotiating a non-legacy PHY rate per peer so ESP-NOW actually grants that
   larger packet size - was inspired by a draft/work-in-progress DMX-over-ESP-NOW-2.0
-  implementation by Carsten Koester (carsten@ckoester.net). The wire format, capability discovery,
+  implementation by [Carsten Koester](https://github.com/carstenkoester/DMXNow). The wire format, capability discovery,
   multi-mode and typed settings mechanisms here are a fresh implementation built around this
   library's own (static-class, C-style) architecture, not a port of that code.
 
